@@ -1,0 +1,74 @@
+<?xml version="1.0"?>
+    <!-- 
+============================================================================================================
+=                                           output files definition                                        =
+=                                            Define your own files                                         =
+=                                         put the variables you want...                                    =
+============================================================================================================
+    -->
+    
+    <file_definition type="multiple_file" name="@expname@" sync_freq="10d" min_digits="4">
+      <file_group id="1ts" output_freq="1ts"  output_level="10" enabled=".TRUE." >  <!-- 5d files -->  
+ 
+	<file id="file1" name_suffix="_grid_T" description="ocean T grid variables" output_freq="6mo" >
+	  <field field_ref="toce" /> 
+	  <field field_ref="soce" /> 
+	  <field field_ref="ssh"  />
+	  <field field_ref="salgrad"  />
+	  <field field_ref="ke_zint"  />
+	  <field field_ref="relvor"  />
+	  <field field_ref="potvor"  />
+	  <field field_ref="saltc"  />
+	  <field field_ref="salt2c"  />
+          <field field_ref="rhop"         name="swsigthet" />
+          <field field_ref="target_to"  />
+          <field field_ref="sponge_gamma_t"  /> 
+	</file>
+
+	<file id="file3" name_suffix="_grid_U" description="ocean U grid variables" output_freq="6mo" >
+	  <field field_ref="utau"  />
+	  <field field_ref="uoce" />
+          <field field_ref="utrd_rvo"      name="utrd_swrvo" />
+          <field field_ref="utrd_keg"      name="utrd_swkeg" />
+          <field field_ref="utrd_pvo"      name="utrd_swpvo" />
+          <field field_ref="utrd_pvo_corr" name="utrd_swpvo_corr" />
+          <field field_ref="utrd_hpg"      name="utrd_swhpg" />
+          <field field_ref="utrd_hpg_corr" name="utrd_swhpg_corr" />
+          <field field_ref="utrd_ldf"      name="utrd_swldf" />
+          <field field_ref="utrd_zdf"      name="utrd_swzdf" />
+          <field field_ref="utrd_zad"      name="utrd_swzad" />
+          <field field_ref="utrd_tot"      name="utrd_swtot" />
+          <field field_ref="utrd_bfr"      name="utrd_swbfr" />
+          <field field_ref="utrd_spg"      name="utrd_swspg" />
+          <field field_ref="utrd_tau"      name="utrd_swtau" />
+          <field field_ref="target_uo"  />
+          <field field_ref="sponge_gamma_u"  />  
+	</file>
+	
+	<file id="file4" name_suffix="_grid_V" description="ocean V grid variables" output_freq="6mo" >
+	  <field field_ref="vtau"  />
+	  <field field_ref="voce" />
+	  <field field_ref="vtrd_rvo"      name="vtrd_swrvo" />
+          <field field_ref="vtrd_keg"      name="vtrd_swkeg" />
+          <field field_ref="vtrd_pvo"      name="vtrd_swpvo" />
+          <field field_ref="vtrd_pvo_corr" name="vtrd_swpvo_corr" />
+          <field field_ref="vtrd_hpg"      name="vtrd_swhpg" />
+          <field field_ref="vtrd_hpg_corr" name="vtrd_swhpg_corr" />
+          <field field_ref="vtrd_ldf"      name="vtrd_swldf" />
+          <field field_ref="vtrd_zdf"      name="vtrd_swzdf" />
+          <field field_ref="vtrd_zad"      name="vtrd_swzad" />
+          <field field_ref="vtrd_tot"      name="vtrd_swtot" />
+          <field field_ref="vtrd_bfr"      name="vtrd_swbfr" />
+          <field field_ref="vtrd_spg"      name="vtrd_swspg" />
+          <field field_ref="vtrd_tau"      name="vtrd_swtau" />
+          <field field_ref="target_vo"  />
+          <field field_ref="sponge_gamma_v"  />
+	</file>
+	
+	<file id="file5" name_suffix="_grid_W" description="ocean W grid variables" output_freq="6mo" >
+	  <field field_ref="woce" />
+	</file>
+
+      </file_group>
+
+   </file_definition>
