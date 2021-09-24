@@ -222,6 +222,9 @@ mv -v ./${OUTDIR} ${OUTSAVE}
 if [ $n -eq 1 ]; then
     #Save the original namelist
     cp -pv namelist_cfg namelist_cfg.original
+
+    #Save the original file_def_nemo-oce.xml
+    cp -pv file_def_nemo-oce.xml file_def_nemo-oce.xml.original
 fi
 
 if [ $n -lt $Nresub ]; then
@@ -231,6 +234,9 @@ elif [ $n -eq $Nresub ]; then
 elif [ $n -gt $Nresub ]; then
     #Restore original namelist
     mv -v namelist_cfg.original namelist_cfg
+
+    #Restore original file_def_nemo-oce.xml
+    mv -v file_def_nemo-oce.xml.original file_def_nemo-oce.xml
 
     #Reset resub count to 1
     echo 1 > resub_count
@@ -316,10 +322,14 @@ echo $NEW_rstart_STR
 #Edit the namelist_cfg file
 sed -i "s/${OLD_it000_STR}/   ${NEW_it000_STR}/g" namelist_cfg 
 sed -i "s/${OLD_itend_STR}/   ${NEW_itend_STR}/g" namelist_cfg 
-#sed -i "s/${OLD_itend_NUM}/${NEW_itend_NUM}/g" namelist_cfg 
 sed -i "s/${OLD_stock_STR}/   ${NEW_stock_STR}/g" namelist_cfg
-#sed -i "s/${OLD_stock_NUM}/${NEW_stock_NUM}/g" namelist_cfg 
 sed -i "s/${OLD_rstart_STR}/   ${NEW_rstart_STR}/g" namelist_cfg
+
+#If going into the experimental window. Alter the output frequency in file_def_nemo-oce.xml
+if [ $n -eq $Nresub ]; then
+    echo "Output frequency being changed from ${SPINUP_OUT_FREQ} to ${EXP_OUT_FREQ}"
+    sed -i "s/output_freq=\"${SPINUP_OUT_FREQ}\"/output_freq=\"${EXP_OUT_FREQ}\"/g" file_def_nemo-oce.xml
+fi
 
 echo $(($n + 1))
 echo $(($n + 1)) > resub_count

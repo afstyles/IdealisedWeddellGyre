@@ -1,0 +1,88 @@
+#!/bin/bash
+#!
+#PBS -q normal
+#PBS -A astyles
+#PBS -l select=9
+#PBS -l walltime=4:00:00
+#PBS -N CANAL_EXP00
+#PBS -o canal.EXP00.output
+#PBS -e canal.EXP00.error
+#PBS -j oe
+#PBS -V
+#PBS -P jmmp
+
+## Load necessary modules just in case they are not loaded already >>>
+module swap PrgEnv-cray/5.2.82 PrgEnv-intel/5.2.82
+module swap intel/15.0.0.090 intel/18.0.5.274
+module load cray-hdf5-parallel/1.10.2.0
+module load cray-netcdf-hdf5parallel/4.6.1.3
+
+#INPUT VARIABLES FOR ALL STAGES (RUNNING + POSTPROCESS)
+export BASE_DIR=/projects/jmmp/astyles/NEMO/release-4.0.1/
+export OCEANCORES=238                                            #Number of cores to run ocean model
+export XIOSCORES=8                                               #Number of cores to run XIOS server (=NUM_DOM)
+export RN=R4                                                     #Resolution code
+export CONFIG_NAME=CANAL_TESTING                                 #Name of configuration
+export SUBMDIR=/projects/jmmp/astyles/CANAL_TESTING/             #Submission script directory
+export SUBMSCRIPT=NEMO_subm_script_EXP00.pbs                     #Submission script file name
+export EXPNN=EXP00                                               #Experiment name
+
+#Postprocessing variables
+export OUTSAVE=$SUBMDIR                                          #Save folder for output files
+export label=${CONFIG_NAME}_${RN}_${EXPNN}_TEST_CLEANUP          #Label for output files 
+export MODEL=CANAL                                               #Model name for file identification
+export Nresub=4                                                  #Total number of resubmissions
+export SPINUP_INT=51840                                          #Number of time steps in a spinup submission
+export EXP_INT=51840                                             #Number of time steps in final resubmission 
+                                                                 #(post spinup)
+export SPINUP_OUT_FREQ="6mo"                                     #Output frequency of data during spinup
+export EXP_OUT_FREQ="1d"                                         #Output frequence of data during experiment
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+#Make sure your namelist is correct:
+#nn_it000 = 1
+#nn_itend = spinup interval
+#nn_stock = spinup interval
+
+#ln_rstart=.false.
+#cn_ocersr_in="restart_tmp"
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+#Move to experiment directory
+cd $BASE_DIR/tests/${CONFIG_NAME}/$EXPNN/
+
+echo " _ __   ___ _ __ ___   ___         "
+echo "| '_ \ / _ \ '_ ' _ \ / _ \        "
+echo "| | | |  __/ | | | | | (_) |       "
+echo "|_| |_|\___|_| |_| |_|\___/  v4.0  "
+
+ulimit -c unlimited
+ulimit -s unlimited
+
+aprun -b -n $XIOSCORES -N $XIOSCORES ./xios_server.exe : -n $OCEANCORES -N 30 ./nemo
+#===============================================================
+# POSTPROCESSING
+#===============================================================
+
+# kills the daisy chain if there are errors
+
+if grep -q 'E R R O R' ocean.output ; then
+
+  echo "E R R O R found, exiting..."
+  echo "  ___ _ __ _ __ ___  _ __  "
+  echo " / _ \ '__| '__/ _ \| '__| "
+  echo "|  __/ |  | | | (_) | |    "
+  echo " \___|_|  |_|  \___/|_|    "
+  echo "check out ocean.output or stdouterr to see what the deal is "
+
+  exit
+else
+  echo "going into postprocessing stage..."
+  # cleans up files, makes restarts, moves files, resubmits this pbs
+
+  bash ./postprocess.sh >& cleanup.log
+
+  cp cleanup.log $OUTSAVE
+  exit
+fi
+
