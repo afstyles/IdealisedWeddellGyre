@@ -230,7 +230,8 @@ CONTAINS
          !
          CALL ideal_WG_bath(glamt, gphit, rn_h_flat, rn_h_ork, rn_domszz, rn_x1, rn_x2, rn_x3, &
               &             rn_x_ork, rn_y2, rn_d1, rn_d2, rn_d3, -zminphi, ln_orkney, ln_fh,  &
-              &             rn_r0, rn_r1, ff_t,  zH, z2d )
+              &             rn_r0, rn_r1, ff_t, rn_H_mbump, ln_mbump, rn_d_mbump,   zH, z2d )
+
       END SELECT
       !
       zmaxlam = MAXVAL(glamt)
@@ -403,7 +404,8 @@ CONTAINS
    !!======================================================================
 
    SUBROUTINE ideal_WG_bath(x_grid, y_grid, H_flat, H_ork, H_max, x1, x2, x3, x_ork, y2, &
-              &             d1, d2, d3, yacc, ln_orkney, ln_fh, r0, r1, ff_t, H, z2d)
+              &             d1, d2, d3, yacc, ln_orkney, ln_fh, r0, r1, ff_t, H_mbump,   &
+              &             ln_mbump, d_mbump, H, z2d)
 
             implicit none
             !
@@ -411,8 +413,9 @@ CONTAINS
             real, intent(in) :: y_grid(SIZE(x_grid,1),SIZE(x_grid,2))
 	         real, intent(in) :: ff_t(SIZE(x_grid,1),SIZE(x_grid,2))
             !
-            real, intent(in) :: H_flat, H_ork, H_max, x1, x2, x3, x_ork, y2, d1, d2, d3, yacc, r0, r1
-            logical, intent(in) :: ln_orkney, ln_fh
+            real, intent(in) :: H_flat, H_ork, H_max, H_mbump
+            real, intent(in) :: x1, x2, x3, x_ork, y2, d1, d2, d3, yacc, r0, r1, d_mbump
+            logical, intent(in) :: ln_orkney, ln_fh, ln_mbump
             !
             real, intent(out) :: H(SIZE(x_grid,1), SIZE(x_grid,2))
 	         real, intent(out) :: z2d(SIZE(x_grid,1), SIZE(x_grid,2))
@@ -423,6 +426,15 @@ CONTAINS
             real :: y_grid2(SIZE(x_grid,1),SIZE(x_grid,2))
             real :: x_cent, y_cent, f_cent, x_max
             integer :: ind_cent(2)
+
+            real :: fn(SIZE(x_grid,1),SIZE(x_grid,2)) !Dummy functions for calculating North, South and West
+            real :: fw(SIZE(x_grid,1),SIZE(x_grid,2)) !boundary values for subdomains
+            real :: fs(SIZE(x_grid,1),SIZE(x_grid,2))
+            !
+            logical :: domain_tmp(SIZE(x_grid,1),SIZE(x_grid,2)) !Dummy mask for highlighting temporary 
+                                                                 !domains of interest
+            !
+            real :: dx, dy  !Dummy x and y widths
             !
             H(:,:) = H_flat
 
@@ -571,6 +583,44 @@ CONTAINS
                 !
                 END WHERE
 
+               !Optional meridional bump in Orkney case
+               IF( ln_mbump ) THEN
+                  !
+                  dx = d_mbump
+                  dy = d3
+                  !
+                  fn(:,:) = 1.
+                  fs(:,:) = 1.
+                  fw(:,:) = 1.
+
+                  domain_tmp = (x_grid > (x_ork-dx) ).AND.(x_grid < x_ork).AND.(y_grid > 0).AND.(y_grid < dy)
+                  
+                  WHERE( x_grid < x_ork )
+                      fn(:,:) = 1 - (1 - H_mbump/H_flat)*(SIN(rpi*(x_grid-x_ork+dx)/d_mbump)**2)
+                  END WHERE
+                  
+                  WHERE( x_grid < x_ork )
+                      fs(:,:) = H_ork/H_flat
+                  END WHERE
+                  
+                  WHERE( y_grid < d3 )
+                      fw(:,:) = (H_ork/H_flat) + (1-H_ork/H_flat)*SIN(0.5*rpi*y_grid/d3)**2
+                  END WHERE
+                  
+                  WHERE(domain_tmp)
+                      !
+                      H(:,:) = ( H_flat/(1-(H_ork/H_flat)) ) * ( fs(:,:)*(1-fw(:,:)) + fn(:,:)*(fw(:,:)-(H_ork/H_flat) ) )
+                      !
+                  END WHERE
+                  
+                  domain_tmp = (x_grid > (x_ork-dx) ).AND.(x_grid < x_ork).AND.(y_grid >= dy)
+                  
+                  WHERE( domain_tmp )
+                      H(:,:) = H_flat * ( 1. - (1. - H_mbump/H_flat)*(SIN(rpi*(x_grid-x_ork+dx)/d_mbump)**2) )
+                  END WHERE
+
+               END IF
+
 
             ELSE
 
@@ -589,6 +639,46 @@ CONTAINS
                     H(:,:) = H_flat*(SIN(0.5*rpi*(y_grid2-yacc)/d3)**2)
                     !
                 END WHERE
+
+                !Optional meridional bump in Non-Orkney case
+               IF( ln_mbump ) THEN
+                  !
+                  dx = MAX(d1, d_mbump)
+                  dy = d3
+                  !
+
+                  fn(:,:) = 1.
+                  fs(:,:) = 1.
+                  fw(:,:) = 1.
+
+                  domain_tmp = (x_grid < dx).AND.(x_grid > 0).AND.(y_grid > 0).AND.(y_grid < dy)
+                  ! Note that we are deliberately using y_grid rather than y_grid2 as y_grid == 0 at the
+                  ! bottom of the ACC channel
+
+                  WHERE( x_grid<d_mbump )
+                      fn(:,:) = 1 - (1 - H_mbump/H_flat)*(SIN(rpi*x_grid/d_mbump)**2)
+                  END WHERE
+
+                  WHERE( x_grid < d1 )
+                      fs(:,:) = SIN(0.5*rpi*x_grid/d1)**2
+                  END WHERE
+
+                  WHERE( y_grid < d3 )
+                      fw(:,:) = SIN(0.5*rpi*y_grid/d3)**2
+                  END WHERE
+
+                  WHERE( domain_tmp )
+                      H(:,:) = H_flat*( fs(:,:)*(1-fw(:,:)) + fw(:,:)*fn(:,:) )
+                  END WHERE
+                  ! 
+                  
+                  domain_tmp = (x_grid < dx).AND.(x_grid > 0).AND.(y_grid >=dy)
+                  
+                  WHERE( domain_tmp.AND.(x_grid<d_mbump) )
+                      H(:,:) = H_flat * ( 1 - (1 - H_mbump/H_flat)*(SIN(rpi*x_grid/d_mbump)**2) )
+                  END WHERE
+                  
+               END IF
 
             END IF
 

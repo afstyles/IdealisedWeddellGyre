@@ -96,6 +96,10 @@
    rn_d1    = 1250.     ! Width of meridional continental shelf [km]
    rn_d2    = 750.     ! Width of zonal continental shelf [km] 
    rn_d3    = 350.     ! Width of meridional shelf in ACC channel [km]
+   !
+   ln_mbump = .true.   ! Add a meridional bump to the ACC channel
+   rn_d_mbump = 800.   ! Zonal width of meridional bump [km]
+   rn_H_mbump = 2000.  ! Minimum depth of meridional bump [km]
 /
 !-----------------------------------------------------------------------
 &namrun        !   parameters of the run

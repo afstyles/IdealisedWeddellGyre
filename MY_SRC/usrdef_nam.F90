@@ -98,6 +98,9 @@ MODULE usrdef_nam
    REAL(wp), PUBLIC ::  rn_d3    = 200.    ! Width of shelf in ACC channel [km]
    REAL(wp), PUBLIC ::  rn_r0    = 225     ! Interior radius of f/H perturbation [km]
    REAL(wp), PUBLIC ::  rn_r1    = 275     ! Exterior radius of f/H perturbation [km]
+   LOGICAL, PUBLIC :: ln_mbump = .false.   ! Add a meridional bump to the ACC channel 
+   REAL(wp), PUBLIC :: rn_d_mbump = 800.   ! Zonal width of meridional bump [km]
+   REAL(wp), PUBLIC :: rn_H_mbump = 2000.  !Minimum depth of meridional bump [km]
    !!----------------------------------------------------------------------
    !! NEMO/OCE 4.0 , NEMO Consortium (2018)
    !! $Id: usrdef_nam.F90 11900 2019-11-13 17:14:44Z smasson $ 
@@ -136,7 +139,7 @@ CONTAINS
          &                 , rn_h_flat, rn_x3, ln_fh, rn_r0, rn_r1, rn_x3, ln_fh   &
          &                 , rn_sponge_gm_t, rn_sponge_to, rn_sponge_tomax, rn_a0_user &
          &                 , rn_sponge_gm2, rn_sponge_gm_t2, rn_sponge_ly, rn_depth_decay &
-         &                 , rn_sponge_uobgf, rn_chan_lx 
+         &                 , rn_sponge_uobgf, rn_chan_lx, ln_mbump, rn_d_mbump, rn_H_mbump
       !!----------------------------------------------------------------------
       !
       REWIND( numnam_cfg )          ! Namelist namusr_def (exist in namelist_cfg only)
