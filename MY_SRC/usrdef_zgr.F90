@@ -583,45 +583,6 @@ CONTAINS
                 !
                 END WHERE
 
-               !Optional meridional bump in Orkney case
-               IF( ln_mbump ) THEN
-                  !
-                  dx = d_mbump
-                  dy = d3
-                  !
-                  fn(:,:) = 1.
-                  fs(:,:) = 1.
-                  fw(:,:) = 1.
-
-                  domain_tmp = (x_grid > (x_ork-dx) ).AND.(x_grid < x_ork).AND.(y_grid > 0).AND.(y_grid < dy)
-                  
-                  WHERE( x_grid < x_ork )
-                      fn(:,:) = 1 - (1 - H_mbump/H_flat)*(SIN(rpi*(x_grid-x_ork+dx)/d_mbump)**2)
-                  END WHERE
-                  
-                  WHERE( x_grid < x_ork )
-                      fs(:,:) = H_ork/H_flat
-                  END WHERE
-                  
-                  WHERE( y_grid < d3 )
-                      fw(:,:) = (H_ork/H_flat) + (1-H_ork/H_flat)*SIN(0.5*rpi*y_grid/d3)**2
-                  END WHERE
-                  
-                  WHERE(domain_tmp)
-                      !
-                      H(:,:) = ( H_flat/(1-(H_ork/H_flat)) ) * ( fs(:,:)*(1-fw(:,:)) + fn(:,:)*(fw(:,:)-(H_ork/H_flat) ) )
-                      !
-                  END WHERE
-                  
-                  domain_tmp = (x_grid > (x_ork-dx) ).AND.(x_grid < x_ork).AND.(y_grid >= dy)
-                  
-                  WHERE( domain_tmp )
-                      H(:,:) = H_flat * ( 1. - (1. - H_mbump/H_flat)*(SIN(rpi*(x_grid-x_ork+dx)/d_mbump)**2) )
-                  END WHERE
-
-               END IF
-
-
             ELSE
 
                !If an Orkney passage isn't used, use an elliptical transition to the channel shelf of thickness d3
@@ -640,47 +601,43 @@ CONTAINS
                     !
                 END WHERE
 
-                !Optional meridional bump in Non-Orkney case
-               IF( ln_mbump ) THEN
-                  !
-                  dx = MAX(d1, d_mbump)
-                  dy = d3
-                  !
-
-                  fn(:,:) = 1.
-                  fs(:,:) = 1.
-                  fw(:,:) = 1.
-
-                  domain_tmp = (x_grid < dx).AND.(x_grid > 0).AND.(y_grid > 0).AND.(y_grid < dy)
-                  ! Note that we are deliberately using y_grid rather than y_grid2 as y_grid == 0 at the
-                  ! bottom of the ACC channel
-
-                  WHERE( x_grid<d_mbump )
-                      fn(:,:) = 1 - (1 - H_mbump/H_flat)*(SIN(rpi*x_grid/d_mbump)**2)
-                  END WHERE
-
-                  WHERE( x_grid < d1 )
-                      fs(:,:) = SIN(0.5*rpi*x_grid/d1)**2
-                  END WHERE
-
-                  WHERE( y_grid < d3 )
-                      fw(:,:) = SIN(0.5*rpi*y_grid/d3)**2
-                  END WHERE
-
-                  WHERE( domain_tmp )
-                      H(:,:) = H_flat*( fs(:,:)*(1-fw(:,:)) + fw(:,:)*fn(:,:) )
-                  END WHERE
-                  ! 
-                  
-                  domain_tmp = (x_grid < dx).AND.(x_grid > 0).AND.(y_grid >=dy)
-                  
-                  WHERE( domain_tmp.AND.(x_grid<d_mbump) )
-                      H(:,:) = H_flat * ( 1 - (1 - H_mbump/H_flat)*(SIN(rpi*x_grid/d_mbump)**2) )
-                  END WHERE
-                  
-               END IF
-
             END IF
+
+            !Optional meridional bump in the ACC channel
+            IF( ln_mbump ) THEN
+               !
+               dx = d_mbump
+               dy = d3
+               !
+
+               fn(:,:) = 1.
+               fs(:,:) = 1.
+               fw(:,:) = 1.
+
+               domain_tmp = (x_grid < 0.).AND.(x_grid > -dx).AND.(y_grid > 0).AND.(y_grid < dy)
+               ! Note that we are deliberately using y_grid rather than y_grid2 as y_grid == 0 at the
+               ! bottom of the ACC channel
+
+               WHERE( domain_tmp)
+                   fn(:,:) = 1 - (1 - H_mbump/H_flat)*(SIN(rpi*(x_grid+dx)/dx)**2)
+               END WHERE
+
+               WHERE( domain_tmp )
+                   fw(:,:) = SIN(0.5*rpi*y_grid/d3)**2
+               END WHERE
+
+               WHERE( domain_tmp )
+                   H(:,:) = H_flat*( fw(:,:)*fn(:,:) )
+               END WHERE
+               ! 
+
+               domain_tmp = (x_grid < 0.).AND.(x_grid > -dx).AND.(y_grid >=dy)
+
+               WHERE( domain_tmp )
+                   H(:,:) = H_flat * ( 1 - (1 - H_mbump/H_flat)*(SIN(rpi*(x_grid+dx)/dx)**2) )
+               END WHERE
+                   
+           END IF
 
             !Elliptical curvature of basin on NE corner >>>>>>>>>>>>>>>>>>>>>>>>>>>>>
             r = SQRT( ((x_grid-x_max)/d2)**2 + ((y_grid2 - yacc)/d3)**2 )
