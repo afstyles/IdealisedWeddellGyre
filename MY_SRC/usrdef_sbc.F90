@@ -85,7 +85,7 @@ CONTAINS
          !
          IF(ln_tau_acc) THEN
             WHERE( (gphit >= -rn_tau_ext) )
-               utau(:,:) = - rn_tau_wg + (rn_tau_acc + rn_tau_wg)*sin( 0.5*rpi*(gphit + rn_tau_ext)/(rn_sponge_ly + 2*rn_tau_ext))**2
+               utau(:,:) = - rn_tau_wg + (rn_tau_acc + rn_tau_wg)*sin( rpi*(gphit + rn_tau_ext)/(rn_sponge_ly + 2*rn_tau_ext))**2
             END WHERE
          ELSE
             WHERE( (gphit >= -rn_tau_ext).AND.(gphit<=0) )
