@@ -106,7 +106,7 @@ CONTAINS
             &              e3w_0   , e3uw_0  , e3vw_0           ,   &    ! vertical scale factors
             &              k_top   , k_bot   ,                      &    ! 1st & last ocean level
             &              sponge_gamma_u, sponge_gamma_v, sponge_gamma_t,  &
-            &              target_uo, target_vo, target_to     )
+            &              target_uo, target_vo, target_to, target_so     )
       ENDIF
       !
 !!gm to be remove when removing the OLD definition of e3 scale factors so that gde3w disappears

@@ -159,7 +159,7 @@ MODULE dom_oce
 
    !! Sponge variable - Added by Andrew Styles
    !! =----------------------------
-   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) :: target_uo, target_vo, target_to
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) :: target_uo, target_vo, target_to, target_so
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:)   :: sponge_gamma_u, sponge_gamma_v, sponge_gamma_t
    !!
 
@@ -294,7 +294,7 @@ CONTAINS
       ALLOCATE( wmask(jpi,jpj,jpk) , wumask(jpi,jpj,jpk), wvmask(jpi,jpj,jpk) , STAT=ierr(12) )
       !
       ALLOCATE( sponge_gamma_u(jpi,jpj), sponge_gamma_v(jpi,jpj), sponge_gamma_t(jpi,jpj), STAT=ierr(13) )
-      ALLOCATE( target_uo(jpi,jpj,jpk), target_vo(jpi,jpj,jpk), target_to(jpi,jpj,jpk), STAT=ierr(14))
+      ALLOCATE( target_uo(jpi,jpj,jpk), target_vo(jpi,jpj,jpk), target_to(jpi,jpj,jpk), target_so(jpi,jpj,jpk), STAT=ierr(14))
       dom_oce_alloc = MAXVAL(ierr)
       !
    END FUNCTION dom_oce_alloc

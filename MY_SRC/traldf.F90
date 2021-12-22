@@ -87,6 +87,8 @@ CONTAINS
                tsa(ji,jj,jk,jp_tem) = tsa(ji,jj,jk,jp_tem) - tmask(ji,jj,jk) * sponge_gamma_t(ji,jj) *   &
                                   &   ( tsb(ji,jj,jk,jp_tem) - target_to(ji,jj,jk) )
                !
+               tsa(ji,jj,jk,jp_tem) = tsa(ji,jj,jk,jp_sal) - tmask(ji,jj,jk) * sponge_gamma_t(ji,jj) *   &
+                                  &   ( tsb(ji,jj,jk,jp_sal) - target_so(ji,jj,jk) )
             END DO
          END DO
       END DO

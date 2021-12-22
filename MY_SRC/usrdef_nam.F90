@@ -61,8 +61,11 @@ MODULE usrdef_nam
    !
    LOGICAL, PUBLIC :: ln_sponge_uoconst = .false. ! = True if ACC does not vary with space 
    REAL(wp), PUBLIC :: rn_sponge_to = 0.1         ! -->! Constant target temperature for sponge   [degC]
-   REAL(wp), PUBLIC ::   rn_sponge_uo = 1.0       ! -->! Constant target x-velocity for sponge    [m/s]
-   REAL(wp), PUBLIC ::   rn_sponge_vo = 0.        ! -->! Constant target y-velocity for sponge    [m/s]
+   REAL(wp), PUBLIC :: rn_sponge_uo = 1.0       ! -->! Constant target x-velocity for sponge    [m/s]
+   REAL(wp), PUBLIC :: rn_sponge_vo = 0.        ! -->! Constant target y-velocity for sponge    [m/s]
+   !
+   !Constant salinity applied in either uoconst or uovar case
+   REAL(wp), PUBLIC :: rn_sponge_so = 35.         ! Constant target salinity for sponge         [PSU] 
    !
    LOGICAL, PUBLIC :: ln_sponge_uovar   = .true.  ! = True then ACC varies sinusoidally horizotally and 
                                                   !        exponentially decays with depth
@@ -80,6 +83,12 @@ MODULE usrdef_nam
    REAL(wp), PUBLIC ::   rn_tau_wg  = 0.02     ! Maximum westward wind stress value [N/m2]
    REAL(wp), PUBLIC ::   rn_tau_ext = 500      ! Southward extension of ACC wind stress profile
    !                                           ! into the basin
+   ! Buoyancy forcing variables added by A. Styles
+   ! VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+   REAL(wp), PUBLIC :: rn_sfx_max = 0.          !Peak salt flux due to shelf ice [g/m2/s] (>0 for buoyancy loss)
+   REAL(wp), PUBLIC :: rn_y_ice = 1000.         !Diatance below ACC where shelf ice is permitted [km]
+   REAL(wp), PUBLIC :: rn_d_ice = 500.          !Length of transition to shelf ice permitting regime [km] 
+   REAL(wp), PUBLIC :: rn_H_freeze = 400.       !Maximum depth where ice freezing is permitted
    !
    ! Topographic variables added by A. Styles
    ! VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
@@ -137,9 +146,10 @@ CONTAINS
          &                 , ln_tau_acc, rn_tau_acc, rn_tau_wg, rn_tau_ext   &
          &                 , rn_h_ork, rn_x1, rn_x2, rn_x_ork, rn_y2, rn_d1, rn_d2, rn_d3, ln_orkney &
          &                 , rn_h_flat, rn_x3, ln_fh, rn_r0, rn_r1, rn_x3, ln_fh   &
-         &                 , rn_sponge_gm_t, rn_sponge_to, rn_sponge_tomax, rn_a0_user &
+         &                 , rn_sponge_gm_t, rn_sponge_to, rn_sponge_so, rn_sponge_tomax, rn_a0_user &
          &                 , rn_sponge_gm2, rn_sponge_gm_t2, rn_sponge_ly, rn_depth_decay &
-         &                 , rn_sponge_uobgf, rn_chan_lx, ln_mbump, rn_d_mbump, rn_H_mbump
+         &                 , rn_sponge_uobgf, rn_chan_lx, ln_mbump, rn_d_mbump, rn_H_mbump &
+         &                 , rn_sfx_max, rn_y_ice, rn_d_ice, rn_H_freeze
       !!----------------------------------------------------------------------
       !
       REWIND( numnam_cfg )          ! Namelist namusr_def (exist in namelist_cfg only)

@@ -19,10 +19,10 @@
 !-----------------------------------------------------------------------
 &namusr_def    !   User defined :   CANAL configuration: Flat bottom, beta-plane
 !-----------------------------------------------------------------------
-   rn_domszx   =   5000.   !  x horizontal size (including sponge 1)        [km]
+   rn_domszx   =   5500.   !  x horizontal size (including sponge 1)        [km]
    rn_domszy   =   3350.   !  y horizontal size (including sponge 1 + 2)        [km]
-   rn_dx       =     25.   !  x horizontal resolution   [km]
-   rn_dy       =     25.   !  y horizontal resolution   [km]
+   rn_dx       =    25.   !  x horizontal resolution   [km]
+   rn_dy       =    25.   !  y horizontal resolution   [km]
    rn_dz       =    125.   !  z vertical resolution      [m]
    rn_0xratio  =      0.0  !  x-domain ratio of the 0
    rn_0yratio  =    0.45   !  y-domain ratio of the 0
@@ -47,7 +47,7 @@
    !
    rn_sponge_lx   =  1000.   ! Length of sponge channel in the x direction [km]
    rn_sponge_ly   =  1350.   ! Length of sponge channel in the y direction [km]
-   rn_chan_lx    =  2000.      ! Length of channel in the y direction (including sponge) [km]
+   rn_chan_lx    =  2500.      ! Length of channel in the y direction (including sponge) [km]
    
    rn_sponge_gm   =  1e-5     ! Channel sponge relaxation parameter (Momentum)    [1/s]
    rn_sponge_gm_t =  1e-7     ! Channel sponge relaxation parameter (Temperature) [1/s]
@@ -70,10 +70,17 @@
    !
    ! Custom wind stress options - Added by A.Styles
    ! VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
-   ln_tau_acc     =  .false. ! =T to resolve wind stress in the ACC channel
+   ln_tau_acc     =  .true. ! =T to resolve wind stress in the ACC channel
    rn_tau_acc     =  0.12   ! Peak ACC wind stress (>0 = eastward)          [N/m2]
    rn_tau_wg      =  0.02   ! Peak Weddell Gyre wind stress (>0 = westward) [N/m2]
-   rn_tau_ext     =  500.   ! Southward Extension of ACC wind stress profile into basin [km]
+   rn_tau_ext     =  1000.   ! Southward Extension of ACC wind stress profile into basin [km]
+   !
+   ! Custom buoyancy forcing options - Added by A.Styles
+   ! VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+   rn_sfx_max = 0.01          !Peak salt flux due to shelf ice freezing [W/m2] (>0 for buoyancy loss)
+   rn_y_ice = 200.         !Diatance below ACC where shelf ice is permitted [km]
+   rn_d_ice = 200.          !Length of transition to shelf ice permitting regime [km]
+   rn_H_freeze = 500.       !Maximum depth where ice shelf freezing can take place [m]
    !
    ! Custom bathymetrey options - Added by A.Styles
    ! VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
@@ -88,18 +95,18 @@
    rn_r0 = 225
    rn_r1 = 275
    !
-   rn_x1    = 1250.    ! Centre of circular bathymetry in South West corner [km]
+   rn_x1    = 600.    ! Centre of circular bathymetry in South West corner [km]
    rn_x2    = 2000.    ! x coordinate of zonal shelf [km]
    rn_x3    = 750.     
    rn_h_flat = 4000.   
    rn_y2    = 500.     ! Extent of Antarctica from South of domain [km]
-   rn_d1    = 1250.     ! Width of meridional continental shelf [km]
-   rn_d2    = 750.     ! Width of zonal continental shelf [km] 
-   rn_d3    = 350.     ! Width of meridional shelf in ACC channel [km]
+   rn_d1    = 600.     ! Width of meridional continental shelf [km]
+   rn_d2    = 300.     ! Width of zonal continental shelf [km] 
+   rn_d3    = 300.     ! Width of meridional shelf in ACC channel [km]
    !
    ln_mbump = .true.   ! Add a meridional bump to the ACC channel
-   rn_d_mbump = 800.   ! Zonal width of meridional bump [km]
-   rn_H_mbump = 2000.  ! Minimum depth of meridional bump [km]
+   rn_d_mbump = 500.   ! Zonal width of meridional bump [km]
+   rn_H_mbump = 3500.  ! Minimum depth of meridional bump [km]
 /
 !-----------------------------------------------------------------------
 &namrun        !   parameters of the run
@@ -155,7 +162,6 @@
   nn_fsbc     = 1         !  frequency of surface boundary condition computation
   ln_usr      = .true.    !  user defined formulation                  (T => check usrdef_sbc)
 /
-
 !!======================================================================
 !!               ***  Lateral boundary condition  ***                 !!
 !!                                                                    !!
@@ -267,7 +273,7 @@
    ln_seos     = .true.         !  = Use simplified equation of state (S-EOS)
    !                            !  rd(T,S,Z)*rau0 = -a0*(1+.5*lambda*dT+mu*Z+nu*dS)*dT+b0*dS
    rn_a0       =  0.28        !  thermal expension coefficient (for simplified equation of state)
-   rn_b0       =  0.          !  saline  expension coefficient (for simplified equation of state)
+   rn_b0       =  7.6554e-1   !  saline  expension coefficient (for simplified equation of state)
    rn_lambda1  =  0.          !  cabbeling coeff in T^2  (=0 for linear eos)
    rn_lambda2  =  0.          !  cabbeling coeff in S^2  (=0 for linear eos)
    rn_mu1      =  0.          !  thermobaric coeff. in T (=0 for linear eos)
@@ -336,6 +342,7 @@
 !-----------------------------------------------------------------------
    ln_hpg_zps  = .false.  !  z-coordinate - partial steps (interpolation)
    ln_hpg_sco  = .true.   !  s-coordinate (standard jacobian formulation)
+   ln_hpg_isf  = .false.   !  s-coordinate (sco ) adapted to isf
 /
 !-----------------------------------------------------------------------
 &namdyn_spg    !   surface pressure gradient                            (default: NO selection)

@@ -30,6 +30,7 @@ MODULE usrdef_zgr
    PRIVATE
 
    PUBLIC   usr_def_zgr        ! called by domzgr.F90
+   PUBLIC   ideal_WG_bath      ! called by usrdef_sbc.F90
 
   !! * Substitutions
 #  include "vectopt_loop_substitute.h90"
@@ -47,7 +48,7 @@ CONTAINS
       &                    pe3w  , pe3uw , pe3vw         ,             &   !     -      -      -
       &                    k_top  , k_bot,                             &   ! top & bottom ocean level
       &                    psponge_gamma_u, psponge_gamma_v, psponge_gamma_t , &
-      &                    ptarget_uo, ptarget_vo, ptarget_to         )    
+      &                    ptarget_uo, ptarget_vo, ptarget_to, ptarget_so         )    
       !!---------------------------------------------------------------------
       !!              ***  ROUTINE usr_def_zgr  ***
       !!
@@ -68,7 +69,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj) ::   z2d   ! 2D workspace
       !
       REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: psponge_gamma_u, psponge_gamma_v, psponge_gamma_t
-      REAL(wp), DIMENSION(jpi,jpj,jpk), INTENT(out) :: ptarget_uo, ptarget_vo, ptarget_to
+      REAL(wp), DIMENSION(jpi,jpj,jpk), INTENT(out) :: ptarget_uo, ptarget_vo, ptarget_to, ptarget_so
       !!----------------------------------------------------------------------
       !
       IF(lwp) WRITE(numout,*)
@@ -101,7 +102,7 @@ CONTAINS
       !
       !
       CALL sponge_setup( pdept, psponge_gamma_u, psponge_gamma_v, psponge_gamma_t,  &
-               &   ptarget_uo, ptarget_vo, ptarget_to)
+               &   ptarget_uo, ptarget_vo, ptarget_to, ptarget_so)
       !
       IF(lwp) THEN
            WRITE(numout,*) ' pdept point = ', pdept(25,80,0)
@@ -207,6 +208,7 @@ CONTAINS
       INTEGER, DIMENSION(:,:), INTENT(out) ::   k_top , k_bot  ! first & last wet ocean level
       REAL, DIMENSION(:,:), INTENT(out)    ::   z2d            !
       REAL(wp), DIMENSION(jpi,jpj) ::   zH   ! 2D local workspace
+      REAL(wp), DIMENSION(jpi,jpj) ::   shelf_frac ! depth of shelf divided by flat depth
       REAL(wp)                     ::   zmaxlam, zminlam, zscl, zminphi
       !!----------------------------------------------------------------------
       !
@@ -230,7 +232,8 @@ CONTAINS
          !
          CALL ideal_WG_bath(glamt, gphit, rn_h_flat, rn_h_ork, rn_domszz, rn_x1, rn_x2, rn_x3, &
               &             rn_x_ork, rn_y2, rn_d1, rn_d2, rn_d3, -zminphi, ln_orkney, ln_fh,  &
-              &             rn_r0, rn_r1, ff_t, rn_H_mbump, ln_mbump, rn_d_mbump,   zH, z2d )
+              &             rn_r0, rn_r1, ff_t, rn_H_mbump, ln_mbump, rn_d_mbump,   zH, z2d,   &
+              &             shelf_frac )
 
       END SELECT
       !
@@ -405,7 +408,7 @@ CONTAINS
 
    SUBROUTINE ideal_WG_bath(x_grid, y_grid, H_flat, H_ork, H_max, x1, x2, x3, x_ork, y2, &
               &             d1, d2, d3, yacc, ln_orkney, ln_fh, r0, r1, ff_t, H_mbump,   &
-              &             ln_mbump, d_mbump, H, z2d)
+              &             ln_mbump, d_mbump, H, z2d, shelf_frac)
 
             implicit none
             !
@@ -418,7 +421,8 @@ CONTAINS
             logical, intent(in) :: ln_orkney, ln_fh, ln_mbump
             !
             real, intent(out) :: H(SIZE(x_grid,1), SIZE(x_grid,2))
-	         real, intent(out) :: z2d(SIZE(x_grid,1), SIZE(x_grid,2))
+            real, intent(out) :: z2d(SIZE(x_grid,1), SIZE(x_grid,2))
+            real, intent(out) :: shelf_frac(SIZE(x_grid,1), SIZE(x_grid,2))
             !
             real :: r(SIZE(x_grid,1),SIZE(x_grid,2))
             real :: g_r(SIZE(x_grid,1),SIZE(x_grid,2))
@@ -437,6 +441,7 @@ CONTAINS
             real :: dx, dy  !Dummy x and y widths
             !
             H(:,:) = H_flat
+            shelf_frac(:,:) = 0.
 
             x_max = MAXVAL(x_grid)
             CALL mpp_max( 'usrdef_zgr', x_max )
@@ -456,7 +461,7 @@ CONTAINS
             WHERE( ((r < x1).AND.(r > (x1-d1) ).AND.(x_grid < x1).AND.(y_grid2 <=x1)) )
                 !
                 H(:,:) = H_flat*SIN( 0.5*rpi*(x1 - r)/d1)**2
-                !S
+                !
             END WHERE
 
             WHERE( ((r >= x1).AND.(x_grid < x1).AND.(y_grid2 <=x1)) )
@@ -509,6 +514,8 @@ CONTAINS
             H(:,:) = 0.
             !
             END WHERE
+
+            shelf_frac = ABS(H(:,:)/H_flat) !Fractional depth over basin shelves only
 
             !Sinusoidal slope on Eastern boundary >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
             WHERE( (x_grid > x_max - d2).AND.(y_grid2 > y2 + x3).AND.(y_grid2 <= yacc))
@@ -653,11 +660,12 @@ CONTAINS
 
       END SUBROUTINE ideal_WG_bath   
 
-   SUBROUTINE sponge_setup(pdept, psponge_gamma_u, psponge_gamma_v, psponge_gamma_t, ptarget_uo, ptarget_vo, ptarget_to)
+   SUBROUTINE sponge_setup(pdept, psponge_gamma_u, psponge_gamma_v, psponge_gamma_t,  &
+                           ptarget_uo, ptarget_vo, ptarget_to, ptarget_so)
 
       REAL(wp), intent(in) , DIMENSION(jpi,jpj,jpk) :: pdept
       REAL(wp), intent(out), DIMENSION(jpi,jpj) ::   psponge_gamma_u, psponge_gamma_v, psponge_gamma_t
-      REAL(wp), intent(out), DIMENSION(jpi,jpj,jpk) :: ptarget_uo, ptarget_vo, ptarget_to
+      REAL(wp), intent(out), DIMENSION(jpi,jpj,jpk) :: ptarget_uo, ptarget_vo, ptarget_to, ptarget_so
       REAL(wp), DIMENSION(jpi,jpj) :: pdept_jk, ptarget_uo_jk, ptarget_to_jk, dt_dy, pff_v
       REAL(wp) :: zf0, zbeta, gphimax, xs1, xs2 
       INTEGER :: jk, jj, ji
@@ -715,6 +723,7 @@ CONTAINS
       ptarget_uo(:,:,:) = 0.0
       ptarget_vo(:,:,:) = 0.0
       ptarget_to(:,:,:) = 0.0
+      ptarget_so(:,:,:) = rn_sponge_so
       !
       IF( ln_sponge_uoconst ) THEN
          ! >>>>>>
@@ -724,7 +733,7 @@ CONTAINS
          ptarget_uo(:,:,:) = rn_sponge_uo
          ptarget_vo(:,:,:) = rn_sponge_vo
          ptarget_to(:,:,:) = rn_sponge_to
-
+         
       ELSE IF ( ln_sponge_uovar ) THEN
          ! >>>>>>
          ! CASE 2 : ACC varies sinusoidally with space
@@ -813,6 +822,8 @@ CONTAINS
                                    & * 1e3  &  !Conversion for km --> m
                                    & + rn_sponge_tomax * exp(-pdept_jk/rn_depth_decay)
             END WHERE
+
+            
 
  
             WHERE( gphit >= rn_sponge_ly )
