@@ -218,14 +218,6 @@ CONTAINS
       IF(lwp) WRITE(numout,*) '       CANAL case : closed flat box ocean without ocean cavities'
       !
       SELECT CASE(nn_botcase)
-      CASE(0)
-         z2d(:,:) = REAL( jpkm1 , wp )          ! flat bottom
-      CASE(1)
-         zmaxlam = MAXVAL(glamt)
-         CALL mpp_max( 'usrdef_zgr', zmaxlam )                 ! max over the global domain
-         zscl = rpi / zmaxlam
-         z2d(:,:) = 0.5 * ( 1. - COS( glamt(:,:) * zscl ) )
-         z2d(:,:) = REAL(jpkm1 - NINT( 0.75 * REAL(jpkm1,wp) * z2d(:,:) ), wp)
       CASE(2)
          zminphi = MINVAL(gphit)
          CALL mpp_min('usrdef_zgr', zminphi)
@@ -590,9 +582,19 @@ CONTAINS
                 !
                 END WHERE
 
+                IF(ln_orkney_pass) THEN
+                   !
+                   WHERE( (x_grid > rn_x_pass - rn_d_pass/2).AND.(x_grid < rn_x_pass + rn_d_pass/2).AND.(y_grid2 >= yacc - d3).AND.(y_grid2 <= yacc + d3) )
+                      !
+                      H(:,:) = ( H(:,:)-rn_H_pass ) * ( SIN( rpi * (x_grid - rn_x_pass) / rn_d_pass) * SIN(0.5 * rpi * (y_grid2 -yacc)/d3) )**2 + rn_H_pass
+                      !
+                   END WHERE
+                   !
+                END IF
+
             ELSE
 
-               !If an Orkney passage isn't used, use an elliptical transition to the channel shelf of thickness d3
+               !If an Orkney ridge isn't used, use an elliptical transition to the channel shelf of thickness d3
                
                 r = SQRT( (x_grid/d1)**2 + ((y_grid2-yacc)/d3)**2 )
 
@@ -683,41 +685,57 @@ CONTAINS
       !                                            !_____|________|______ |
       !                                                 xs1      xs2     x=0
 
+      
       !Channel sponge relaxation parameters >>>>>>>>>>>>>>
-      ! The sponge is independent of y and varies sinusoidally wrt x over the length rn_sponge_lx
-      !
-      WHERE( ((gphiu > 0 ).AND.(gphiu < rn_sponge_ly).AND.(glamu >= xs1).AND.(glamu <=xs2)) )
-         psponge_gamma_u(:,:) = rn_sponge_gm*( SIN(rpi*(glamu-xs1)/rn_sponge_lx)**2 )
-      END WHERE
+      IF(ln_sponge_chan_mom) THEN
+         ! The sponge is independent of y and varies sinusoidally wrt x over the length rn_sponge_lx
+         !
+         WHERE( ((gphiu > 0 ).AND.(gphiu < rn_sponge_ly).AND.(glamu >= xs1).AND.(glamu <=xs2)) )
+            psponge_gamma_u(:,:) = rn_sponge_gm*( SIN(rpi*(glamu-xs1)/rn_sponge_lx)**2 )
+         END WHERE
 
-      WHERE( ((gphiv > 0 ).AND.(gphiv < rn_sponge_ly).AND.(glamv >= xs1).AND.(glamv <= xs2)))
-         psponge_gamma_v(:,:) = rn_sponge_gm*( SIN(rpi*(glamv-xs1)/rn_sponge_lx)**2 )
-      END WHERE
+         WHERE( ((gphiv > 0 ).AND.(gphiv < rn_sponge_ly).AND.(glamv >= xs1).AND.(glamv <= xs2)))
+            psponge_gamma_v(:,:) = rn_sponge_gm*( SIN(rpi*(glamv-xs1)/rn_sponge_lx)**2 )
+         END WHERE
 
-      WHERE( ((gphit > 0 ).AND.(gphit < rn_sponge_ly).AND.(glamt >= xs1).AND.(glamt <= xs2)))
-         psponge_gamma_t(:,:) = rn_sponge_gm_t*( SIN(rpi*(glamt-xs1)/rn_sponge_lx)**2 )
-      END WHERE
+      END IF
 
+      IF(ln_sponge_chan_tra) THEN
+
+         WHERE( ((gphit > 0 ).AND.(gphit < rn_sponge_ly).AND.(glamt >= xs1).AND.(glamt <= xs2)))
+            psponge_gamma_t(:,:) = rn_sponge_gm_t*( SIN(rpi*(glamt-xs1)/rn_sponge_lx)**2 )
+         END WHERE
+ 
+      END IF
+      
       !Northern sponge  >>>>>>>>>>>>>>>>>>>>>>>>
       ! The northern sponge lies above the ACC and only varies with y sinusoidally.
       !
       gphimax = MAXVAL(gphit)
       CALL mpp_max( 'usrdef_zgr', gphimax)
 
-      WHERE(gphiu >= rn_sponge_ly)
-         psponge_gamma_u(:,:) = rn_sponge_gm2*( COS(0.5*rpi*(gphiu-gphimax)/(rn_sponge_ly-gphimax))**2 )
-      END WHERE
+      IF( ln_sponge_nort_mom) THEN
+         !
+         WHERE(gphiu >= rn_sponge_ly)
+            psponge_gamma_u(:,:) = rn_sponge_gm2*( COS(0.5*rpi*(gphiu-gphimax)/(rn_sponge_ly-gphimax))**2 )
+         END WHERE
+         !
+         WHERE( gphiv >= rn_sponge_ly )
+            psponge_gamma_v(:,:) = rn_sponge_gm2*( COS(0.5*rpi*(gphiv-gphimax)/(rn_sponge_ly-gphimax))**2 )
+         END WHERE
+         !
+      END IF
 
-      WHERE( gphiv >= rn_sponge_ly )
-         psponge_gamma_v(:,:) = rn_sponge_gm2*( COS(0.5*rpi*(gphiv-gphimax)/(rn_sponge_ly-gphimax))**2 )
-      END WHERE
-
-      WHERE( gphit >= rn_sponge_ly )
-         psponge_gamma_t(:,:) = rn_sponge_gm_t2*( COS(0.5*rpi*(gphit-gphimax)/(rn_sponge_ly-gphimax))**2 )
-      END WHERE
+      IF( ln_sponge_nort_tra ) THEN
+         !
+         WHERE( gphit >= rn_sponge_ly )
+            psponge_gamma_t(:,:) = rn_sponge_gm_t2*( COS(0.5*rpi*(gphit-gphimax)/(rn_sponge_ly-gphimax))**2 )
+         END WHERE
+         !
+      END IF
 
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-      ! Determine target temperature and velocity fields
+      ! Determine target/initial temperature and velocity fields
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       !
       ptarget_uo(:,:,:) = 0.0
@@ -807,7 +825,8 @@ CONTAINS
                                    & + rpi*(zf0 + zbeta*gphit)*(rn_sponge_ly - rn_d3)*SIN(2*rpi*(gphit-rn_d3)/(rn_sponge_ly - rn_d3))   &
                                    & - zbeta*((rn_sponge_ly - rn_d3)**2)*(SIN(rpi*(gphit - rn_d3)/(rn_sponge_ly - rn_d3))**2) )         &
                                    & * 1e3  &  !Conversion for km --> m
-                                   & + rn_sponge_tomax * exp(-pdept_jk/rn_depth_decay)
+                                   & + (rn_sponge_tomax-rn_sponge_tobot) * exp(-pdept_jk/rn_depth_decay)            &
+                                   & + rn_sponge_tobot
 
             END WHERE
 
@@ -820,7 +839,8 @@ CONTAINS
                                    & 2*(rpi**2)*zf0*(rn_sponge_ly - rn_d3)                                          &
                                    & + (rpi**2)*zbeta*(rn_sponge_ly**2 - rn_d3**2) )                                &
                                    & * 1e3  &  !Conversion for km --> m
-                                   & + rn_sponge_tomax * exp(-pdept_jk/rn_depth_decay)
+                                   & + (rn_sponge_tomax-rn_sponge_tobot) * exp(-pdept_jk/rn_depth_decay)            &
+                                   & + rn_sponge_tobot
             END WHERE
 
             
@@ -830,7 +850,7 @@ CONTAINS
                 !
                 ! Temperature over the northern sponge does not vary horizontally
                 !
-                ptarget_to(:,:,jk) = rn_sponge_tomax * exp(-pdept_jk/rn_depth_decay)
+                ptarget_to(:,:,jk) = (rn_sponge_tomax - rn_sponge_tobot) * exp(-pdept_jk/rn_depth_decay) + rn_sponge_tobot
                 !
             END WHERE
             !

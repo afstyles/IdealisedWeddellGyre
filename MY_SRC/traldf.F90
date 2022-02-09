@@ -24,6 +24,7 @@ MODULE traldf
    USE traldf_triad   ! lateral diffusion: laplacian iso-neutral triad    operator  (tra_ldf_triad      routine )
    USE trd_oce        ! trends: ocean variables
    USE trdtra         ! ocean active tracers trends
+   USE usrdef_nam, ONLY: ln_sponge_chan_tra, ln_sponge_nort_tra   
    !
    USE prtctl         ! Print control
    USE in_out_manager ! I/O manager
@@ -80,24 +81,29 @@ CONTAINS
       !
       ! Add temperature sponge relaxation to the ldf trend.
       !
-      DO jk = 1, jpk
-         DO jj = 1, jpj
-            DO ji = 1, jpi
-               !
-               tsa(ji,jj,jk,jp_tem) = tsa(ji,jj,jk,jp_tem) - tmask(ji,jj,jk) * sponge_gamma_t(ji,jj) *   &
-                                  &   ( tsb(ji,jj,jk,jp_tem) - target_to(ji,jj,jk) )
-               !
-               tsa(ji,jj,jk,jp_tem) = tsa(ji,jj,jk,jp_sal) - tmask(ji,jj,jk) * sponge_gamma_t(ji,jj) *   &
-                                  &   ( tsb(ji,jj,jk,jp_sal) - target_so(ji,jj,jk) )
+      IF( ln_sponge_chan_tra.OR.ln_sponge_nort_tra ) THEN 
+         !
+         DO jk = 1, jpk
+            DO jj = 1, jpj
+               DO ji = 1, jpi
+                  !
+                  tsa(ji,jj,jk,jp_tem) = tsa(ji,jj,jk,jp_tem) - tmask(ji,jj,jk) * sponge_gamma_t(ji,jj) *   &
+                                     &   ( tsb(ji,jj,jk,jp_tem) - target_to(ji,jj,jk) )
+                  !
+                  tsa(ji,jj,jk,jp_sal) = tsa(ji,jj,jk,jp_sal) - tmask(ji,jj,jk) * sponge_gamma_t(ji,jj) *   &
+                                     &   ( tsb(ji,jj,jk,jp_sal) - target_so(ji,jj,jk) )
+               END DO
             END DO
          END DO
-      END DO
+         !
+      END IF 
+
       !
       ! Output sponge parameters for diagnostic purposes
       !
 
-      CALL iom_put( "sponge_gamma_t" , sponge_gamma_t(:,:) )
-      CALL iom_put( "target_to", target_to(:,:,:) )
+      IF( iom_use("sponge_gamma_t") )  CALL iom_put( "sponge_gamma_t" , sponge_gamma_t(:,:) )
+      IF( iom_use("target_to") )       CALL iom_put( "target_to", target_to(:,:,:) )
 
       IF( l_trdtra )   THEN                    !* save the horizontal diffusive trends for further diagnostics
          ztrdt(:,:,:) = tsa(:,:,:,jp_tem) - ztrdt(:,:,:)

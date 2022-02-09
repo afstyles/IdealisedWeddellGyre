@@ -33,7 +33,7 @@ MODULE usrdef_nam
    REAL(wp), PUBLIC ::   rn_dx      =   30.  ! x horizontal resolution   [km]
    REAL(wp), PUBLIC ::   rn_dy      =   30.  ! y horizontal resolution   [km]
    REAL(wp), PUBLIC ::   rn_dz      =  500.  ! vertical resolution        [m]
-   REAL(wp), PUBLIC ::   rn_0xratio =    0.5 ! x domain ratio of the 0
+   REAL(wp), PUBLIC ::   rn_0xratio =    0.0 ! x domain ratio of the 0
    REAL(wp), PUBLIC ::   rn_0yratio =    0.5 ! x domain ratio of the 0
    INTEGER , PUBLIC ::   nn_fcase   =    1   ! F computation (0:f0, 1:Beta, 2:real)
    REAL(wp), PUBLIC ::   rn_ppgphi0 =   38.5 ! reference latitude for beta-plane 
@@ -45,13 +45,18 @@ MODULE usrdef_nam
    REAL(wp), PUBLIC ::   rn_uzonal  =    0.  ! initial zonal current       [m/s]
    REAL(wp), PUBLIC ::   rn_ujetszx =  150.  ! longitudinal jet extension  [km]
    REAL(wp), PUBLIC ::   rn_ujetszy =  150.  ! latitudinal jet extension   [km]
-   INTEGER , PUBLIC ::   nn_botcase =    0   ! bottom definition (0:flat, 1:bump)
+   INTEGER , PUBLIC ::   nn_botcase =    2   ! bottom definition (2:Idealized WG)
    INTEGER , PUBLIC ::   nn_initcase=    0   ! initial condition case (0=rest, 1=zonal current, 2=canal)
    LOGICAL , PUBLIC ::   ln_sshnoise=.false. ! add random noise on initial ssh
    REAL(wp), PUBLIC ::   rn_lambda  = 50.    ! gaussian lambda
    !
    ! Sponge variables added by A. Styles
    ! VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+   LOGICAL(wp), PUBLIC :: ln_sponge_chan_mom = .false. !=T Use a momentum sponge in the ACC channel
+   LOGICAL(wp), PUBLIC :: ln_sponge_chan_tra = .false. !=T Use a tracer sponge in the ACC channel
+   LOGICAL(wp), PUBLIC :: ln_sponge_nort_mom = .true.  !=T Use a momentum sponge on the northern boundary
+   LOGICAL(wp), PUBLIC :: ln_sponge_nort_tra = .true.  !=T Use a tracer sponge on the northern boundary
+
    REAL(wp), PUBLIC ::   rn_sponge_lx = 1000.0 ! Length of sponge in x direction [km]
    REAL(wp), PUBLIC :: rn_sponge_ly = 750.
    REAL(wp), PUBLIC ::   rn_sponge_gm = 1e-5   ! Maximum value of channel sponge restoring parameter (mom)  [1/s]
@@ -70,7 +75,8 @@ MODULE usrdef_nam
    LOGICAL, PUBLIC :: ln_sponge_uovar   = .true.  ! = True then ACC varies sinusoidally horizotally and 
                                                   !        exponentially decays with depth
    REAL(wp), PUBLIC :: rn_sponge_uomax = 0.15     ! -->! Maximum x velocity in ACC (at surface)
-   REAL(wp), PUBLIC :: rn_sponge_tomax = 0.1      ! -->! Maximum temperature in ACC (at surface and Northern edge)
+   REAL(wp), PUBLIC :: rn_sponge_tomax = 5.      ! -->! Maximum temperature in ACC (at surface and Northern edge)
+   REAL(wp), PUBLIC :: rn_sponge_tobot = 2.      ! Target temperature at sea floor [deg C]
    REAL(wp), PUBLIC :: rn_depth_decay = 600.
    REAL(wp), PUBLIC :: rn_sponge_uobgf = 0.   ! Constant background flow of the ACC [m/s]
    
@@ -85,17 +91,25 @@ MODULE usrdef_nam
    !                                           ! into the basin
    ! Buoyancy forcing variables added by A. Styles
    ! VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+   LOGICAL, PUBLIC :: ln_atm_heat = .true.      ! =T add a zonally symmetric atmospheric heating/cooling profile
+   REAL(wp), PUBLIC :: rn_qheat_acc = 10.       ! Peak atmospheric heat flux in the ACC (>0 = heating) [W/m2]
+   REAL(wp), PUBLIC :: rn_qheat_ext = 1000.     ! Southward extension of ACC heating into basin =[km]
+   REAL(wp), PUBLIC :: rn_qcool_wg  = 15.       ! Peak atmospheric heat flux in the WG  (>0 = cooling) [W/m2]
+
+   LOGICAL, PUBLIC :: ln_ice_shelf = .false.    ! =T to add idealized fresh water forcing due to sea ice
    REAL(wp), PUBLIC :: rn_sfx_max = 0.          !Peak salt flux due to shelf ice [g/m2/s] (>0 for buoyancy loss)
    REAL(wp), PUBLIC :: rn_y_ice = 1000.         !Diatance below ACC where shelf ice is permitted [km]
    REAL(wp), PUBLIC :: rn_d_ice = 500.          !Length of transition to shelf ice permitting regime [km] 
    REAL(wp), PUBLIC :: rn_H_freeze = 400.       !Maximum depth where ice freezing is permitted
+   LOGICAL, PUBLIC ::  ln_ice_div = .false.     ! =F treat ice melt/freeze as idealized salt fluxes
+                                                ! =T treat ice melt/freeze as effective freshwater fluxes
    !
    ! Topographic variables added by A. Styles
    ! VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
    REAL(wp), PUBLIC :: rn_chan_lx = 2000.  ! Length of channel (including sponge) [km]  
-   LOGICAL, PUBLIC ::  ln_orkney= .false.  ! Simulate an idealised Orkney passage
+   LOGICAL, PUBLIC ::  ln_orkney= .false.  ! Simulate an idealised Orkney ridge
    LOGICAL, PUBLIC ::  ln_fh    = .false.  ! Add an f/H perturbation
-   REAL(wp), PUBLIC ::  rn_h_ork = 2000.   ! Depth of the Orkney passage [m]
+   REAL(wp), PUBLIC ::  rn_h_ork = 2000.   ! Depth of the Orkney ridge [m]
    REAL(wp), PUBLIC ::  rn_h_flat = 4000.  ! Depth of flat parts of domain [m]
    REAL(wp), PUBLIC ::  rn_x1    = 1000.   ! Centre of circular bathymetry in South West corner [km]
    REAL(wp), PUBLIC ::  rn_x2    = 2000.   ! x coordinate of zonal shelf [km]
@@ -110,6 +124,10 @@ MODULE usrdef_nam
    LOGICAL, PUBLIC :: ln_mbump = .false.   ! Add a meridional bump to the ACC channel 
    REAL(wp), PUBLIC :: rn_d_mbump = 800.   ! Zonal width of meridional bump [km]
    REAL(wp), PUBLIC :: rn_H_mbump = 2000.  !Minimum depth of meridional bump [km]
+   LOGICAL, PUBLIC :: ln_orkney_pass = .false. ! Add a deep passage to the Orkney ridge if ln_orkney = T
+   REAL(wp), PUBLIC :: rn_x_pass = 500.    ! x coordinate of passage centre [km]
+   REAL(wp), PUBLIC :: rn_d_pass = 100.    ! Full width of the deep passage [km]
+   REAL(wp), PUBLIC :: rn_h_pass = 4000.   ! Maximum depth of the deep passage [m] 
    !!----------------------------------------------------------------------
    !! NEMO/OCE 4.0 , NEMO Consortium (2018)
    !! $Id: usrdef_nam.F90 11900 2019-11-13 17:14:44Z smasson $ 
@@ -149,7 +167,10 @@ CONTAINS
          &                 , rn_sponge_gm_t, rn_sponge_to, rn_sponge_so, rn_sponge_tomax, rn_a0_user &
          &                 , rn_sponge_gm2, rn_sponge_gm_t2, rn_sponge_ly, rn_depth_decay &
          &                 , rn_sponge_uobgf, rn_chan_lx, ln_mbump, rn_d_mbump, rn_H_mbump &
-         &                 , rn_sfx_max, rn_y_ice, rn_d_ice, rn_H_freeze
+         &                 , rn_sfx_max, rn_y_ice, rn_d_ice, rn_H_freeze &
+         &                 , ln_sponge_chan_mom, ln_sponge_chan_tra, ln_sponge_nort_mom, ln_sponge_nort_tra &
+         &                 , ln_ice_shelf, ln_atm_heat, rn_qheat_acc, rn_qheat_ext, rn_qcool_wg, rn_sponge_tobot &
+         &                 , ln_ice_div, ln_orkney_pass, rn_x_pass, rn_d_pass, rn_h_pass
       !!----------------------------------------------------------------------
       !
       REWIND( numnam_cfg )          ! Namelist namusr_def (exist in namelist_cfg only)

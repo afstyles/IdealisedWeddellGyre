@@ -34,7 +34,7 @@ MODULE dynhpg
    USE dom_oce         ! ocean space and time domain
    USE wet_dry         ! wetting and drying
    USE phycst          ! physical constants
-   USE usrdef_nam
+   USE usrdef_nam, ONLY: ln_sponge_chan_mom, ln_sponge_nort_mom
    USE trd_oce         ! trends: ocean variables
    USE trddyn          ! trend manager: dynamics
    USE zpshde          ! partial step: hor. derivative     (zps_hde routine)
@@ -115,27 +115,29 @@ CONTAINS
       CASE ( np_isf )   ;   CALL hpg_isf    ( kt )      ! s-coordinate similar to sco modify for ice shelf
       END SELECT
 
-  
-      ! Add sponge forcing to the horizontal pressure gradient    
-      DO jk = 1, jpk
-         DO jj = 1, jpj
-            DO ji = 1, jpi
-               !
-               ua(ji,jj,jk) = ua(ji,jj,jk) - umask(ji,jj,jk) * sponge_gamma_u(ji,jj) * ( un(ji,jj,jk) - target_uo(ji,jj,jk) )
-               va(ji,jj,jk) = va(ji,jj,jk) - vmask(ji,jj,jk) * sponge_gamma_v(ji,jj) * ( vn(ji,jj,jk) - target_vo(ji,jj,jk) )
-               !
+      IF(ln_sponge_chan_mom.OR.ln_sponge_nort_mom) THEN  
+         ! Add sponge forcing to the horizontal pressure gradient    
+         DO jk = 1, jpk
+            DO jj = 1, jpj
+               DO ji = 1, jpi
+                  !
+                  ua(ji,jj,jk) = ua(ji,jj,jk) - umask(ji,jj,jk) * sponge_gamma_u(ji,jj) * ( un(ji,jj,jk) - target_uo(ji,jj,jk) )
+                  va(ji,jj,jk) = va(ji,jj,jk) - vmask(ji,jj,jk) * sponge_gamma_v(ji,jj) * ( vn(ji,jj,jk) - target_vo(ji,jj,jk) )
+                  !
+               END DO
             END DO
          END DO
-      END DO
       !
+      END IF
+      
       ! Output sponge parameters for diagnostic purposes
       !
-      CALL iom_put( "sponge_gamma_u" , sponge_gamma_u(:,:) )
-      CALL iom_put( "sponge_gamma_v" , sponge_gamma_v(:,:) )
-      
-      CALL iom_put( "target_uo", target_uo(:,:,:) )
-      CALL iom_put( "target_vo", target_vo(:,:,:) )
-    
+      IF( iom_use("sponge_gamma_u") )  CALL iom_put( "sponge_gamma_u" , sponge_gamma_u(:,:) )
+      IF( iom_use("sponge_gamma_v") )  CALL iom_put( "sponge_gamma_v" , sponge_gamma_v(:,:) )
+      !
+      IF( iom_use("target_uo") )       CALL iom_put( "target_uo", target_uo(:,:,:) )
+      IF( iom_use("target_vo") )       CALL iom_put( "target_vo", target_vo(:,:,:) )
+     
       IF( l_trddyn ) THEN      ! save the hydrostatic pressure gradient trends for momentum trend diagnostics
          ztrdu(:,:,:) = ua(:,:,:) - ztrdu(:,:,:)
          ztrdv(:,:,:) = va(:,:,:) - ztrdv(:,:,:)
