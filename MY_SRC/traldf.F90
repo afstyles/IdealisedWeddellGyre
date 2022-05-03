@@ -58,6 +58,8 @@ CONTAINS
       !!
       REAL(wp), ALLOCATABLE, DIMENSION(:,:,:) ::   ztrdt, ztrds
       INTEGER :: ji, jj, jk
+      REAL(wp) :: zvol, ztn
+      REAL(wp), ALLOCATABLE, DIMENSION(:,:,:) :: ztn_weighted
       !!----------------------------------------------------------------------
       !
       IF( ln_timing )   CALL timing_start('tra_ldf')
@@ -104,6 +106,37 @@ CONTAINS
 
       IF( iom_use("sponge_gamma_t") )  CALL iom_put( "sponge_gamma_t" , sponge_gamma_t(:,:) )
       IF( iom_use("target_to") )       CALL iom_put( "target_to", target_to(:,:,:) )
+
+      IF( iom_use("mean_temperature").OR.iom_use("mean_salinity") ) THEN
+         ALLOCATE( ztn_weighted(jpi,jpj,jpk) )
+         ztn_weighted(:,:,:) = 0.
+        
+         !Calculate T cell volume of the domain
+         DO jk = 1,jpk
+               ztn_weighted(:,:,jk) = e1t(:,:) * e2t(:,:) * e3t_n(:,:,jk) * tmask(:,:,jk) 
+         END DO
+         
+         zvol =  glob_sum('traldf', ztn_weighted) ! T cell volume of the domain
+         
+         !Calculate the xyz mean temperature
+         IF( iom_use("mean_temperature") ) THEN
+            DO jk = 1,jpk
+               ztn_weighted(:,:,jk) = tsb(:,:,jk,jp_tem) * e1t(:,:) * e2t(:,:) * e3t_n(:,:,jk) * tmask(:,:,jk)
+            END DO
+            ztn = glob_sum('traldf', ztn_weighted)/zvol
+            CALL iom_put( "mean_temperature", ztn )
+         END IF 
+
+         !Calculate the xyz mean salinity
+         IF( iom_use("mean_salinity") ) THEN
+            DO jk = 1,jpk
+               ztn_weighted(:,:,jk) = tsb(:,:,jk,jp_sal) * e1t(:,:) * e2t(:,:) * e3t_n(:,:,jk) * tmask(:,:,jk) 
+            END DO
+            ztn = glob_sum('traldf', ztn_weighted)/zvol 
+            CALL iom_put( "mean_salinity", ztn ) 
+         END IF
+
+      END IF
 
       IF( l_trdtra )   THEN                    !* save the horizontal diffusive trends for further diagnostics
          ztrdt(:,:,:) = tsa(:,:,:,jp_tem) - ztrdt(:,:,:)

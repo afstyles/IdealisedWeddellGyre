@@ -24,7 +24,7 @@ MODULE usrdef_zgr
    USE in_out_manager ! I/O manager
    USE lbclnk         ! ocean lateral boundary conditions (or mpp link)
    USE lib_mpp        ! distributed memory computing library
-   
+   USE iom   
 
    IMPLICIT NONE
    PRIVATE
@@ -101,18 +101,10 @@ CONTAINS
          &          pe3w    , pe3uw   , pe3vw             )     !           -      -      -
       !
       !
+      IF(lwp) WRITE(numout,*) '   (4) sponge_setup       '
       CALL sponge_setup( pdept, psponge_gamma_u, psponge_gamma_v, psponge_gamma_t,  &
                &   ptarget_uo, ptarget_vo, ptarget_to, ptarget_so)
       !
-      IF(lwp) THEN
-           WRITE(numout,*) ' pdept point = ', pdept(25,80,0)
-           WRITE(numout,*) ' psponge_gamma_u point = ', psponge_gamma_u(25,80) 
-           WRITE(numout,*) ' psponge_gamma_v point = ', psponge_gamma_v(25,80)
-           WRITE(numout,*) ' psponge_gamma_t point = ', psponge_gamma_t(25,80)
-           WRITE(numout,*) ' ptarget_uo = ', ptarget_uo(25,80,0)
-           WRITE(numout,*) ' ptarget_vo = ', ptarget_vo(25,80,0) 
-           WRITE(numout,*) ' ptarget_to = ', ptarget_to(25,80,0)  
-      END IF
       !
    END SUBROUTINE usr_def_zgr
 
@@ -207,9 +199,10 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER, DIMENSION(:,:), INTENT(out) ::   k_top , k_bot  ! first & last wet ocean level
       REAL, DIMENSION(:,:), INTENT(out)    ::   z2d            !
-      REAL(wp), DIMENSION(jpi,jpj) ::   zH   ! 2D local workspace
+      REAL(wp), DIMENSION(jpi,jpj) ::   zH, znoise   ! 2D local workspace
       REAL(wp), DIMENSION(jpi,jpj) ::   shelf_frac ! depth of shelf divided by flat depth
-      REAL(wp)                     ::   zmaxlam, zminlam, zscl, zminphi
+      REAL(wp)                     ::   zmaxlam, zminlam, zscl, zminphi, iamp, iphase, ikx, iky, ilx, ily
+      INTEGER                      ::   ip, np, noise_case, inum_noise
       !!----------------------------------------------------------------------
       !
       IF(lwp) WRITE(numout,*)
@@ -229,6 +222,96 @@ CONTAINS
 
       END SELECT
       !
+      !
+      IF(ln_bathy_noise) THEN
+         !Add sinusoidal noise to the Weddell GYRE bathymetry
+         
+         
+         !!IF(lwp) WRITE(numout,*) 'Adding sinusoidal noise to the bathymetry'
+         !np = SIZE(rn_bnoise_lx)
+         !znoise(:,:) = 0.
+
+         CALL iom_open( trim(cn_noise_file), inum_noise)
+         CALL iom_get( inum_noise, jpdom_autoglo_xy, cn_noise_varname, znoise, ldxios=lrxios)
+         CALL iom_close( inum_noise )
+
+         znoise = rn_noise_scale * znoise
+
+	 !DO ip = 1,np
+	 !   !
+         !   iphase = rn_bnoise_phase(ip)
+         !   iamp = rn_bnoise_amp(ip)!
+
+	 !   ilx = rn_bnoise_lx(ip)
+         !   ily = rn_bnoise_ly(ip)
+
+            
+
+            !Test for zero wavelength cases
+         !   IF( (ABS(ilx) > 0._wp).AND.(ABS(ily) > 0._wp) ) noise_case = 1
+         !   IF( (ABS(ilx) <= 0._wp).AND.(ABS(ily) <= 0._wp) ) noise_case = 2 
+         !   IF( (ABS(ilx) >  0._wp).AND.(ABS(ily) <= 0._wp) ) noise_case = 3
+         !   IF( (ABS(ilx) <= 0._wp).AND.(ABS(ily) >  0._wp) ) noise_case = 4  
+            
+         !   SELECT CASE(noise_case)
+         !   CASE(1) !Both wavelengths are non-zero
+         !      ilx = rn_domszx / NINT(rn_domszx/ilx)
+         !      ikx = 2*rpi/rn_bnoise_lx(ip)
+         !      iky = 2*rpi/rn_bnoise_ly(ip)
+
+         !      znoise(:,:) = znoise(:,:) + iamp * SIN( ikx * glamt + iky * gphit + iphase )
+
+         !      IF(lwp) WRITE(numout,*) 'Noisecase = ', noise_case
+         !      IF(lwp) WRITE(numout,*) 'Mode ',ip,'k = (', ikx, ',', iky, ')'
+         !      IF(lwp) WRITE(numout,*) 'Amp = ', iamp
+         !      IF(lwp) WRITE(numout,*) 'Phase = ', iphase
+         !      IF(lwp) WRITE(numout,*) ''                                    
+
+         !   CASE(2) ! Both wavelengths are zero
+         !      ikx = 0.
+         !      iky = 0.     
+
+         !  CASE(3) ! Only the x wavelength is non-zero
+         !      ilx = rn_domszx / NINT(rn_domszx/ilx)
+         !      ikx = 2*rpi/rn_bnoise_lx(ip)
+         !      iky = 0.
+
+         !      znoise(:,:) = znoise(:,:) + iamp * SIN( ikx * glamt + iphase )
+
+         !      IF(lwp) WRITE(numout,*) 'Noisecase = ', noise_case
+         !      IF(lwp) WRITE(numout,*) 'Mode ',ip,'k = (', ikx, ',', iky, ')'
+         !      IF(lwp) WRITE(numout,*) 'Amp = ', iamp
+         !      IF(lwp) WRITE(numout,*) 'Phase = ', iphase
+         !      IF(lwp) WRITE(numout,*) ''
+                      
+
+         !   CASE(4) ! Only the y wavelength is non-zero
+         !      ikx = 0.
+         !      iky = 2*rpi/rn_bnoise_ly(ip)
+
+         !      znoise(:,:) = znoise(:,:) + iamp * SIN( iky * gphit + iphase )
+
+         !      IF(lwp) WRITE(numout,*) 'Noisecase = ', noise_case
+         !      IF(lwp) WRITE(numout,*) 'Mode ',ip,'k = (', ikx, ',', iky, ')'
+         !      IF(lwp) WRITE(numout,*) 'Amp = ', iamp
+         !      IF(lwp) WRITE(numout,*) 'Phase = ', iphase
+         !      IF(lwp) WRITE(numout,*) ''
+                           
+         !   END SELECT
+            !
+            ! 
+         !END DO
+
+         !zH(:,:) = zH(:,:) + znoise(:,:)
+         !
+         !WHERE( zH < 0 )
+	 !   zH(:,:) = 0.
+         !END WHERE
+
+         !z2d = ( zH / rn_domszz ) * jpkm1
+
+         !
+      END IF
       zmaxlam = MAXVAL(glamt)
       zminlam = MINVAL(glamt)
       CALL mpp_max( 'usrdef_zgr', zmaxlam )
@@ -242,6 +325,12 @@ CONTAINS
       	 z2d(:,:) = 0.
       END WHERE
       !
+      IF(ln_bathy_noise) THEN
+         WHERE(( z2d > 1 ).AND.(z2d + znoise*jpkm1/rn_domszz > 1) )
+            z2d(:,:) = z2d(:,:) + znoise(:,:) * (jpkm1 / rn_domszz)
+         END WHERE
+      END IF
+
       CALL lbc_lnk( 'usrdef_zgr', z2d, 'T', 1. )           ! set surrounding land to zero (here jperio=0 ==>> closed)
       !
       k_bot(:,:) = INT( z2d(:,:) )           ! =jpkm1 over the ocean point, =0 elsewhere
@@ -671,13 +760,14 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj) :: pdept_jk, ptarget_uo_jk, ptarget_to_jk, dt_dy, pff_v
       REAL(wp) :: zf0, zbeta, gphimax, xs1, xs2 
       INTEGER :: jk, jj, ji
-
+      REAL(wp) :: gamma_maxval
 
       !Relaxation parameter (gamma) configuration >>>>>>>>>>>>>>>>>>>>>>
-      psponge_gamma_u(:,:) = 0.0
-      psponge_gamma_v(:,:) = 0.0
-      psponge_gamma_t(:,:) = 0.0
+      psponge_gamma_u(:,:) = 0._wp
+      psponge_gamma_v(:,:) = 0._wp
+      psponge_gamma_t(:,:) = 0._wp
       !
+      IF(lwp) WRITE(numout,*) ' Set sponge values to 0. ' 
       !Left and right x coordinates of the channel sponge
       xs1 = -(rn_chan_lx + rn_sponge_lx)/2         !_____________________
       xs2 = -(rn_chan_lx - rn_sponge_lx)/2         !     | %%%%%% |       |
@@ -689,7 +779,7 @@ CONTAINS
       !Channel sponge relaxation parameters >>>>>>>>>>>>>>
       IF(ln_sponge_chan_mom) THEN
          ! The sponge is independent of y and varies sinusoidally wrt x over the length rn_sponge_lx
-         !
+         IF(lwp) WRITE(numout,*) "Channel momentum sponge is on with max gamma = ", rn_sponge_gm
          WHERE( ((gphiu > 0 ).AND.(gphiu < rn_sponge_ly).AND.(glamu >= xs1).AND.(glamu <=xs2)) )
             psponge_gamma_u(:,:) = rn_sponge_gm*( SIN(rpi*(glamu-xs1)/rn_sponge_lx)**2 )
          END WHERE
@@ -701,7 +791,7 @@ CONTAINS
       END IF
 
       IF(ln_sponge_chan_tra) THEN
-
+         IF(lwp) WRITE(numout,*) "Channel tracer sponge is on with max gamma = ", rn_sponge_gm_t
          WHERE( ((gphit > 0 ).AND.(gphit < rn_sponge_ly).AND.(glamt >= xs1).AND.(glamt <= xs2)))
             psponge_gamma_t(:,:) = rn_sponge_gm_t*( SIN(rpi*(glamt-xs1)/rn_sponge_lx)**2 )
          END WHERE
@@ -716,6 +806,7 @@ CONTAINS
 
       IF( ln_sponge_nort_mom) THEN
          !
+         IF(lwp) WRITE(numout,*) "Northern momentum sponge is on with max gamma = ", rn_sponge_gm2
          WHERE(gphiu >= rn_sponge_ly)
             psponge_gamma_u(:,:) = rn_sponge_gm2*( COS(0.5*rpi*(gphiu-gphimax)/(rn_sponge_ly-gphimax))**2 )
          END WHERE
@@ -728,19 +819,32 @@ CONTAINS
 
       IF( ln_sponge_nort_tra ) THEN
          !
+         IF(lwp) WRITE(numout,*) "Northern tracer sponge is on with gamma = ", rn_sponge_gm_t2
          WHERE( gphit >= rn_sponge_ly )
             psponge_gamma_t(:,:) = rn_sponge_gm_t2*( COS(0.5*rpi*(gphit-gphimax)/(rn_sponge_ly-gphimax))**2 )
          END WHERE
          !
       END IF
 
+      gamma_maxval = MAXVAL(ABS(sponge_gamma_u))
+      CALL mpp_max('usrdef_zgr', gamma_maxval)
+      IF(lwp) WRITE(numout,*) "u gamma maxval", gamma_maxval
+
+      gamma_maxval = MAXVAL(ABS(sponge_gamma_v))
+      CALL mpp_max('usrdef_zgr', gamma_maxval)
+      IF(lwp) WRITE(numout,*) "u gamma maxval", gamma_maxval 
+
+      gamma_maxval = MAXVAL(ABS(sponge_gamma_t))
+      CALL mpp_max('usrdef_zgr', gamma_maxval)
+      IF(lwp) WRITE(numout,*) "t gamma maxval", gamma_maxval 
+
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       ! Determine target/initial temperature and velocity fields
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       !
-      ptarget_uo(:,:,:) = 0.0
-      ptarget_vo(:,:,:) = 0.0
-      ptarget_to(:,:,:) = 0.0
+      ptarget_uo(:,:,:) = 0._wp
+      ptarget_vo(:,:,:) = 0._wp
+      ptarget_to(:,:,:) = 0._wp
       ptarget_so(:,:,:) = rn_sponge_so
       !
       IF( ln_sponge_uoconst ) THEN
@@ -756,7 +860,7 @@ CONTAINS
          ! >>>>>>
          ! CASE 2 : ACC varies sinusoidally with space
          ! >>>>>>
-         ptarget_vo(:,:,:) = 0.
+         ptarget_vo(:,:,:) = 0._wp
          ptarget_to(:,:,:) = -999.
          !
          !Calculate f0 and beta for the Coriolis parameter : f = zf0 + beta * (y-y0)
@@ -768,7 +872,7 @@ CONTAINS
          DO jk = 1, jpk
             !
             pdept_jk = pdept(:,:,jk)
-            ptarget_uo_jk(:,:) = 0.
+            ptarget_uo_jk(:,:) = 0._wp
             !
             WHERE( ((gphiu > rn_d3 ).AND.(gphiu < rn_sponge_ly).AND.(glamu >= xs1).AND.(glamu <= xs2)))
                !
@@ -794,7 +898,7 @@ CONTAINS
                ! Northern target velocity >>>>>>>>>>>>>>>>
                ! u is simply zero in this region
                !
-               ptarget_uo_jk(:,:) = 0.
+               ptarget_uo_jk(:,:) = 0._wp
             END WHERE
             !
             !Save uo values to the 3d array

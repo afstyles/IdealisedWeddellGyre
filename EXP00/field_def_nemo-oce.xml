@@ -1010,6 +1010,14 @@
        <field id="mxln25h"             name="mixing length 25h mean"             unit="m" />
     </field_group>
 
+    <field_group id="custom_scalar" grid_ref="grid_scalar" >
+       <!-- grid T -->
+       <field id="acc_transport"   long_name="ACC transport"   unit="m3/s" />
+       <field id="mean_temperature"   long_name="Mean temperature"   unit="degC" />
+       <field id="mean_salinity"      long_name="Mean salinity"   unit="1e-3" />    
+    </field_group>
+
+
      <!-- 
 ============================================================================================================
        -->
@@ -1030,5 +1038,6 @@
        <field field_ref="e3v"          name="e3v"     long_name="vertical scale factor"            />
        <field field_ref="ssv"          name="vos"     long_name="sea_surface_y_velocity"           />     
     </field_group>    
+
 
    </field_definition>

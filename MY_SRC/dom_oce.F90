@@ -162,6 +162,8 @@ MODULE dom_oce
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) :: target_uo, target_vo, target_to, target_so
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:)   :: sponge_gamma_u, sponge_gamma_v, sponge_gamma_t
    !!
+   !! ACC transport calculation - Added by Andrew Styles
+   REAL(wp), PUBLIC, SAVE :: zacc
 
    !!----------------------------------------------------------------------
    !! masks, top and bottom ocean point position
@@ -295,6 +297,7 @@ CONTAINS
       !
       ALLOCATE( sponge_gamma_u(jpi,jpj), sponge_gamma_v(jpi,jpj), sponge_gamma_t(jpi,jpj), STAT=ierr(13) )
       ALLOCATE( target_uo(jpi,jpj,jpk), target_vo(jpi,jpj,jpk), target_to(jpi,jpj,jpk), target_so(jpi,jpj,jpk), STAT=ierr(14))
+      
       dom_oce_alloc = MAXVAL(ierr)
       !
    END FUNCTION dom_oce_alloc

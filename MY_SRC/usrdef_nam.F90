@@ -27,8 +27,9 @@ MODULE usrdef_nam
    PUBLIC   usr_def_nam   ! called by nemogcm.F90
 
    !                              !!* namusr_def namelist *!!
-   REAL(wp)         ::   rn_domszx  = 1800.  ! x horizontal size         [km]
-   REAL(wp)         ::   rn_domszy  = 1800.  ! y horizontal size         [km]
+   !Note: I changed rn_domszx and rn_domszy to PUBLIC variables - A. Styles 30/03/2022
+   REAL(wp), PUBLIC ::   rn_domszx  = 1800.  ! x horizontal size         [km]
+   REAL(wp), PUBLIC ::   rn_domszy  = 1800.  ! y horizontal size         [km]
    REAL(wp), PUBLIC ::   rn_domszz  = 5000.  ! z horizontal size          [m]
    REAL(wp), PUBLIC ::   rn_dx      =   30.  ! x horizontal resolution   [km]
    REAL(wp), PUBLIC ::   rn_dy      =   30.  ! y horizontal resolution   [km]
@@ -128,6 +129,16 @@ MODULE usrdef_nam
    REAL(wp), PUBLIC :: rn_x_pass = 500.    ! x coordinate of passage centre [km]
    REAL(wp), PUBLIC :: rn_d_pass = 100.    ! Full width of the deep passage [km]
    REAL(wp), PUBLIC :: rn_h_pass = 4000.   ! Maximum depth of the deep passage [m] 
+   LOGICAL(wp), PUBLIC :: ln_bathy_noise = .false. ! Add noise to the bathymetry
+   REAL(wp), PUBLIC :: rn_noise_scale = 100.       ! Scale factor to apply to loaded noise
+   CHARACTER(len=40), PUBLIC :: cn_noise_file = '.' !Location of the noise file (not including .nc)
+   CHARACTER(len=40), PUBLIC :: cn_noise_varname = 'noise' !Variable name for noise in the file   
+
+   !REAL(wp), PUBLIC, DIMENSION(20)  :: rn_bnoise_lx ! Wavelengths in the x direction [1/km]
+   !REAL(wp), PUBLIC, DIMENSION(20) :: rn_bnoise_ly ! Wavelengths in the y direction [1/km]
+   !REAL(wp), PUBLIC, DIMENSION(20) :: rn_bnoise_phase ! Phase values (0,2pi) [-]
+   !REAL(wp), PUBLIC, DIMENSION(20) :: rn_bnoise_amp ! Amplitudes [m]
+
    !!----------------------------------------------------------------------
    !! NEMO/OCE 4.0 , NEMO Consortium (2018)
    !! $Id: usrdef_nam.F90 11900 2019-11-13 17:14:44Z smasson $ 
@@ -170,7 +181,10 @@ CONTAINS
          &                 , rn_sfx_max, rn_y_ice, rn_d_ice, rn_H_freeze &
          &                 , ln_sponge_chan_mom, ln_sponge_chan_tra, ln_sponge_nort_mom, ln_sponge_nort_tra &
          &                 , ln_ice_shelf, ln_atm_heat, rn_qheat_acc, rn_qheat_ext, rn_qcool_wg, rn_sponge_tobot &
-         &                 , ln_ice_div, ln_orkney_pass, rn_x_pass, rn_d_pass, rn_h_pass
+         &                 , ln_ice_div, ln_orkney_pass, rn_x_pass, rn_d_pass, rn_h_pass &
+         &                 , ln_bathy_noise, rn_noise_scale, cn_noise_file, cn_noise_varname 
+
+      !! rn_bnoise_lx, rn_bnoise_ly, rn_bnoise_phase, rn_bnoise_amp          
       !!----------------------------------------------------------------------
       !
       REWIND( numnam_cfg )          ! Namelist namusr_def (exist in namelist_cfg only)

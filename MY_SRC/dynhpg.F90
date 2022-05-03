@@ -34,7 +34,7 @@ MODULE dynhpg
    USE dom_oce         ! ocean space and time domain
    USE wet_dry         ! wetting and drying
    USE phycst          ! physical constants
-   USE usrdef_nam, ONLY: ln_sponge_chan_mom, ln_sponge_nort_mom
+   USE usrdef_nam, ONLY: ln_sponge_chan_mom, ln_sponge_nort_mom, rn_domszx
    USE trd_oce         ! trends: ocean variables
    USE trddyn          ! trend manager: dynamics
    USE zpshde          ! partial step: hor. derivative     (zps_hde routine)
@@ -96,6 +96,8 @@ CONTAINS
       !REAL(wp), DIMENSION(jpi,jpj) ::   sponge_gamma_u, sponge_gamma_v
       !REAL(wp), DIMENSION(jpi,jpj,jpk) :: target_uo, target_vo
       INTEGER ::   ios, jk, jj, ji             ! Local integer output status for namelist read
+      REAL(wp) :: zacc  !Calculation of ACC transport from now velocities
+      REAL(wp), ALLOCATABLE, DIMENSION(:,:,:) :: zun_weighted !Temporary array for weighted now velocities
       !!----------------------------------------------------------------------
       !
       IF( ln_timing )   CALL timing_start('dyn_hpg')
@@ -137,7 +139,19 @@ CONTAINS
       !
       IF( iom_use("target_uo") )       CALL iom_put( "target_uo", target_uo(:,:,:) )
       IF( iom_use("target_vo") )       CALL iom_put( "target_vo", target_vo(:,:,:) )
-     
+      
+
+      !Calculate the ACC transport if it is outputted
+      IF( iom_use("acc_transport") ) THEN
+         ALLOCATE( zun_weighted(jpi,jpj,jpk) )
+         zun_weighted(:,:,:) = 0.
+         DO jk=1,jpk
+	    zun_weighted(:,:,jk) = un(:,:,jk) * e1u(:,:) * e2u(:,:) * e3u_n(:,:,jk) * umask(:,:,jk)
+         END DO
+         zacc = glob_sum('dynhpg', zun_weighted )/(1000 * rn_domszx)
+         CALL iom_put( "acc_transport", zacc )
+      END IF
+      !
       IF( l_trddyn ) THEN      ! save the hydrostatic pressure gradient trends for momentum trend diagnostics
          ztrdu(:,:,:) = ua(:,:,:) - ztrdu(:,:,:)
          ztrdv(:,:,:) = va(:,:,:) - ztrdv(:,:,:)

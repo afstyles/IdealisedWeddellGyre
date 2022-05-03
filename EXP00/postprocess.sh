@@ -11,7 +11,8 @@ export NUM_CPU=$OCEANCORES
 #Resubmission parameters
 #export SUBMDIR=/projects/nexcs-n02/astyles/subm_scripts/WSExp/testing/W10/R1/ #Path to submission script directory
 #export SUBMSCRIPT=NEMO_subm_script.pbs #Submission script file name
-#export Nresub=0 #Total number of resubmissions
+#export Nresub_spup=0 #Total number of resubmissions for spinup
+#export Nresub_exp=0 #Total number of resubmissions experiment
 #export SPINUP_INT=4320 #Number of time steps in a single spinup submission
 #export EXP_INT=4320 #Number of time steps in final resubmission (post spinup)
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -195,7 +196,7 @@ cp -pv ${MODEL}_${RES_TIMESTAMP}_restart.nc ./RESTARTS/restart_tmp.nc
 mv -v ${MODEL}_${RES_TIMESTAMP}_restart*.nc ./${OUTDIR}/
 
 #Move mesh_mask files to output folder (combined and uncombined)
-mv -v mesh_mask*.nc ./${OUTDIR}/
+mv -v mesh_mask* ./${OUTDIR}/
 
 #Move grid files to output folder
 mv -v ${MODEL}*grid_*.nc ./${OUTDIR}/
@@ -211,9 +212,20 @@ cp -pv ./nam_rebuild_grid_U  ./${OUTDIR}/nam_rebuild_grid_U.${RES_TIMESTAMP}
 cp -pv ./nam_rebuild_grid_V  ./${OUTDIR}/nam_rebuild_grid_V.${RES_TIMESTAMP}
 cp -pv ./nam_rebuild_grid_W  ./${OUTDIR}/nam_rebuild_grid_W.${RES_TIMESTAMP}
 cp -pv ./nam_rebuild_restart ./${OUTDIR}/nam_rebuild_restart.${RES_TIMESTAMP}
+cp -pv ./file_def_nemo-oce.xml ./${OUTDIR}/file_def_nemo-oce.xml.${RES_TIMESTAMP}
+cp -pv ./field_def_nemo-oce.xml ./${OUTDIR}/field_def_nemo-oce.xml.${RES_TIMESTAMP}
 
 #Move output foder to save location
-mv -v ./${OUTDIR} ${OUTSAVE}
+
+if [ $n -le $Nresub_spup ]; then
+   mv -v ./${OUTDIR} ${OUTSAVE}/SPINUP/
+elif [ $n -gt $Nresub_spup ]; then
+   mv -v ./${OUTDIR} ${OUTSAVE}/EXP/
+fi
+
+if [ $n -eq 1 ]; then
+   mv -v ${OUTSAVE}/SPINUP/mesh_mask* ${OUTSAVE}
+fi
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # 2) Updating the namelist_cfg file
@@ -227,22 +239,24 @@ if [ $n -eq 1 ]; then
     cp -pv file_def_nemo-oce.xml file_def_nemo-oce.xml.original
 fi
 
-if [ $n -lt $Nresub ]; then
+if [ $n -lt $Nresub_spup ]; then
     export NEW_stock_NUM=$SPINUP_INT
-elif [ $n -eq $Nresub ]; then
+elif [ $n -ge $Nresub_spup ]; then
     export NEW_stock_NUM=$EXP_INT
-elif [ $n -gt $Nresub ]; then
-    #Restore original namelist
-    mv -v namelist_cfg.original namelist_cfg
+    #
+    if [ $n -gt $(expr $Nresub_spup + $Nresub_exp) ]; then
+       #Restore original namelist
+       mv -v namelist_cfg.original namelist_cfg
 
-    #Restore original file_def_nemo-oce.xml
-    mv -v file_def_nemo-oce.xml.original file_def_nemo-oce.xml
+       #Restore original file_def_nemo-oce.xml
+       mv -v file_def_nemo-oce.xml.original file_def_nemo-oce.xml
 
-    #Reset resub count to 1
-    echo 1 > resub_count
+      #Reset resub count to 1
+      echo 1 > resub_count
 
-    #Stop here
-    exit
+      #Stop here
+      exit
+   fi
 fi
 
 echo "resubmission number " $n
@@ -319,14 +333,20 @@ export NEW_rstart_STR=$(echo ${OLD_rstart_STR} | sed -r 's/false/true/g')
 echo $NEW_rstart_STR
 #---------------------------------------
 
+#ln_meshmask, set to false (essential for first restart)
+export OLD_meshmask_STR=$(grep -ri "ln_meshmask" namelist_cfg)
+export NEW_meshmask_STR=$(echo ${OLD_meshmask_STR} | sed -r 's/true/false/g')
+echo $NEW_meshmask_STR
+
 #Edit the namelist_cfg file
 sed -i "s/${OLD_it000_STR}/   ${NEW_it000_STR}/g" namelist_cfg 
 sed -i "s/${OLD_itend_STR}/   ${NEW_itend_STR}/g" namelist_cfg 
 sed -i "s/${OLD_stock_STR}/   ${NEW_stock_STR}/g" namelist_cfg
 sed -i "s/${OLD_rstart_STR}/   ${NEW_rstart_STR}/g" namelist_cfg
+sed -i "s/${OLD_meshmask_STR}/   ${NEW_meshmask_STR}/g" namelist_cfg
 
 #If going into the experimental window. Alter the output frequency in file_def_nemo-oce.xml
-if [ $n -eq $Nresub ]; then
+if [ $n -eq $Nresub_spup ]; then
     echo "Output frequency being changed from ${SPINUP_OUT_FREQ} to ${EXP_OUT_FREQ}"
     sed -i "s/output_freq=\"${SPINUP_OUT_FREQ}\"/output_freq=\"${EXP_OUT_FREQ}\"/g" file_def_nemo-oce.xml
 fi
