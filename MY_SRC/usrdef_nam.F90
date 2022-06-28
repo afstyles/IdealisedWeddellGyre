@@ -112,6 +112,7 @@ MODULE usrdef_nam
    LOGICAL, PUBLIC ::  ln_fh    = .false.  ! Add an f/H perturbation
    REAL(wp), PUBLIC ::  rn_h_ork = 2000.   ! Depth of the Orkney ridge [m]
    REAL(wp), PUBLIC ::  rn_h_flat = 4000.  ! Depth of flat parts of domain [m]
+   REAL(wp), PUBLIC ::  rn_hs    = 200.    ! Depth of shelf plateaus [m]
    REAL(wp), PUBLIC ::  rn_x1    = 1000.   ! Centre of circular bathymetry in South West corner [km]
    REAL(wp), PUBLIC ::  rn_x2    = 2000.   ! x coordinate of zonal shelf [km]
    REAL(wp), PUBLIC ::  rn_x3    = 3000.   ! Centre of circular bathymetry in South East corner [km]
@@ -120,6 +121,8 @@ MODULE usrdef_nam
    REAL(wp), PUBLIC ::  rn_d1    = 700.    ! Width of meridional continental shelf [km]
    REAL(wp), PUBLIC ::  rn_d2    = 350.    ! Width of zonal continental shelf [km]
    REAL(wp), PUBLIC ::  rn_d3    = 200.    ! Width of shelf in ACC channel [km]
+   REAL(wp), PUBLIC ::  rn_s1    = 100.    ! Width of meridional shelf plateau [km]
+   REAL(wp), PUBLIC ::  rn_s2    = 100.    ! Width of zonal shelf plateau [km] 
    REAL(wp), PUBLIC ::  rn_r0    = 225     ! Interior radius of f/H perturbation [km]
    REAL(wp), PUBLIC ::  rn_r1    = 275     ! Exterior radius of f/H perturbation [km]
    LOGICAL, PUBLIC :: ln_mbump = .false.   ! Add a meridional bump to the ACC channel 
@@ -133,6 +136,8 @@ MODULE usrdef_nam
    REAL(wp), PUBLIC :: rn_noise_scale = 100.       ! Scale factor to apply to loaded noise
    CHARACTER(len=40), PUBLIC :: cn_noise_file = '.' !Location of the noise file (not including .nc)
    CHARACTER(len=40), PUBLIC :: cn_noise_varname = 'noise' !Variable name for noise in the file   
+   INTEGER, PUBLIC :: nn_zgr_type = 0               !Type of vertical grid = 0 regular
+                                                    !                      = 1 Madec and Imbard
 
    !REAL(wp), PUBLIC, DIMENSION(20)  :: rn_bnoise_lx ! Wavelengths in the x direction [1/km]
    !REAL(wp), PUBLIC, DIMENSION(20) :: rn_bnoise_ly ! Wavelengths in the y direction [1/km]
@@ -174,6 +179,7 @@ CONTAINS
          &                 , ln_sponge_uoconst, ln_sponge_uovar, rn_sponge_uomax     &
          &                 , ln_tau_acc, rn_tau_acc, rn_tau_wg, rn_tau_ext   &
          &                 , rn_h_ork, rn_x1, rn_x2, rn_x_ork, rn_y2, rn_d1, rn_d2, rn_d3, ln_orkney &
+         &                 , rn_s1, rn_s2, rn_hs &
          &                 , rn_h_flat, rn_x3, ln_fh, rn_r0, rn_r1, rn_x3, ln_fh   &
          &                 , rn_sponge_gm_t, rn_sponge_to, rn_sponge_so, rn_sponge_tomax, rn_a0_user &
          &                 , rn_sponge_gm2, rn_sponge_gm_t2, rn_sponge_ly, rn_depth_decay &
@@ -182,7 +188,8 @@ CONTAINS
          &                 , ln_sponge_chan_mom, ln_sponge_chan_tra, ln_sponge_nort_mom, ln_sponge_nort_tra &
          &                 , ln_ice_shelf, ln_atm_heat, rn_qheat_acc, rn_qheat_ext, rn_qcool_wg, rn_sponge_tobot &
          &                 , ln_ice_div, ln_orkney_pass, rn_x_pass, rn_d_pass, rn_h_pass &
-         &                 , ln_bathy_noise, rn_noise_scale, cn_noise_file, cn_noise_varname 
+         &                 , ln_bathy_noise, rn_noise_scale, cn_noise_file, cn_noise_varname &
+         &                 , nn_zgr_type 
 
       !! rn_bnoise_lx, rn_bnoise_ly, rn_bnoise_phase, rn_bnoise_amp          
       !!----------------------------------------------------------------------

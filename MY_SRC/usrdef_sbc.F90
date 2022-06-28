@@ -105,8 +105,8 @@ CONTAINS
          taum(:,:) = 0._wp
          wndm(:,:) = 0._wp
          !
-         CALL ideal_WG_bath(glamt, gphit, rn_h_flat, rn_h_ork, rn_domszz, rn_x1, rn_x2, rn_x3, &
-              &             rn_x_ork, rn_y2, rn_d1, rn_d2, rn_d3, -zminphi, ln_orkney, ln_fh,  &
+         CALL ideal_WG_bath(glamt, gphit, rn_h_flat, rn_h_ork, rn_domszz, rn_hs, rn_x1, rn_x2, rn_x3, &
+              &             rn_x_ork, rn_y2, rn_d1, rn_d2, rn_d3, rn_s1, rn_s2, -zminphi, ln_orkney, ln_fh,  &
               &             rn_r0, rn_r1, ff_t, rn_H_mbump, ln_mbump, rn_d_mbump,   zH, z2d,   &
               &             shelf_frac )      
 

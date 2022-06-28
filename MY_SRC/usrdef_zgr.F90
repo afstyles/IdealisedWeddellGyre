@@ -80,8 +80,15 @@ CONTAINS
       ! type of vertical coordinate
       ! ---------------------------
       ld_zco    = .FALSE.         ! CANAL case:  z-coordinate without ocean cavities
-      ld_zps    = .TRUE.
-      ld_sco    = .FALSE.
+      !
+      IF(nn_zgr_type .NE. 2) THEN
+         ld_zps    = .TRUE.
+         ld_sco    = .FALSE.
+      ELSE
+         ld_zps    = .FALSE.
+         ld_sco    = .TRUE.
+      END IF
+      !
       ld_isfcav = .FALSE.
       !
       !
@@ -143,7 +150,7 @@ CONTAINS
       REAL(wp), DIMENSION(:)    , INTENT(out) ::   pe3t_1d , pe3w_1d    ! 1D vertical scale factors  [m]
       !
       INTEGER  ::   jk       ! dummy loop indices
-      REAL(wp) ::   zd       ! local scalar
+      REAL(wp) ::   zd, zsur, za0, za1, zkth, zacr, zt, zw       
       !!----------------------------------------------------------------------
       !
       zd = rn_domszz/FLOAT(jpkm1)
@@ -152,21 +159,57 @@ CONTAINS
          WRITE(numout,*)
          WRITE(numout,*) '    zgr_z   : Reference vertical z-coordinates '
          WRITE(numout,*) '    ~~~~~~~'
-         WRITE(numout,*) '       CANAL case : uniform vertical grid :'
-         WRITE(numout,*) '                     with thickness = ', zd
       ENDIF
 
       !
-      ! 1D Reference z-coordinate    (using Madec & Imbard 1996 function)
+      ! 1D Reference z-coordinate    (using Madec and Imbard 1996 function)
       ! -------------------------
       !
-      pdepw_1d(1) = 0._wp
-      pdept_1d(1) = 0.5_wp * zd
-      ! 
-      DO jk = 2, jpk          ! depth at T and W-points
-         pdepw_1d(jk) = pdepw_1d(jk-1) + zd 
-         pdept_1d(jk) = pdept_1d(jk-1) + zd 
-      END DO
+      SELECT CASE(nn_zgr_type)
+      
+      CASE(0,2) ! Regular z grid
+         IF(lwp) WRITE(numout,*)'        CANAL case : uniform vertical grid :'
+         IF(lwp) WRITE(numout,*)'                     with thickness = ', zd
+         pdepw_1d(1) = 0._wp
+         pdept_1d(1) = 0.5_wp * zd
+         !
+         DO jk = 2, jpk          ! depth at T and W-points
+            pdepw_1d(jk) = pdepw_1d(jk-1) + zd 
+            pdept_1d(jk) = pdept_1d(jk-1) + zd 
+         END DO
+         !
+      CASE(1) ! Madec and Imbard z grid
+         !
+         ! Set parameters of z(k) function
+         ! -------------------------------
+         zsur = -2033.194295283385_wp
+         za0  =   155.8325369664153_wp
+         za1  =   146.3615918601890_wp
+         zkth =    17.28520372419791_wp
+         zacr =     5.0_wp
+         !
+         IF(lwp) THEN
+            WRITE(numout,*) '       CANAL case : MI96 function with the following coefficients :'
+            WRITE(numout,*) '                 zsur = ', zsur
+            WRITE(numout,*) '                 za0  = ', za0
+            WRITE(numout,*) '                 za1  = ', za1
+            WRITE(numout,*) '                 zkth = ', zkth
+            WRITE(numout,*) '                 zacr = ', zacr
+         END IF
+         !
+         DO jk = 1, jpk          ! depth at T and W-points
+            zw = REAL( jk , wp )
+            zt = REAL( jk , wp ) + 0.5_wp
+            pdepw_1d(jk) = ( zsur + za0 * zw + za1 * zacr *  LOG( COSH( (zw-zkth) / zacr ) )  )
+            pdept_1d(jk) = ( zsur + za0 * zt + za1 * zacr *  LOG( COSH( (zt-zkth) / zacr ) )  )
+         END DO
+         !
+         !Scale the MI96 function to get as many interior vertical grid points as possible
+         !
+         pdept_1d(:) = pdept_1d(:) * rn_domszz/pdepw_1d(jpk)
+         pdepw_1d(:) = pdepw_1d(:) * rn_domszz/pdepw_1d(jpk)
+         !             
+      END SELECT
       !
       !                       ! e3t and e3w from depth
       CALL depth_to_e3( pdept_1d, pdepw_1d, pe3t_1d, pe3w_1d ) 
@@ -199,7 +242,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER, DIMENSION(:,:), INTENT(out) ::   k_top , k_bot  ! first & last wet ocean level
       REAL, DIMENSION(:,:), INTENT(out)    ::   z2d            !
-      REAL(wp), DIMENSION(jpi,jpj) ::   zH, znoise   ! 2D local workspace
+      REAL(wp), DIMENSION(jpi,jpj) ::   zH, znoise, z2d_tmp   ! 2D local workspace
       REAL(wp), DIMENSION(jpi,jpj) ::   shelf_frac ! depth of shelf divided by flat depth
       REAL(wp)                     ::   zmaxlam, zminlam, zscl, zminphi, iamp, iphase, ikx, iky, ilx, ily
       INTEGER                      ::   ip, np, noise_case, inum_noise
@@ -215,8 +258,10 @@ CONTAINS
          zminphi = MINVAL(gphit)
          CALL mpp_min('usrdef_zgr', zminphi)
          !
-         CALL ideal_WG_bath(glamt, gphit, rn_h_flat, rn_h_ork, rn_domszz, rn_x1, rn_x2, rn_x3, &
-              &             rn_x_ork, rn_y2, rn_d1, rn_d2, rn_d3, -zminphi, ln_orkney, ln_fh,  &
+         CALL ideal_WG_bath(glamt, gphit, rn_h_flat, rn_h_ork, rn_domszz, rn_hs,               &
+              &             rn_x1, rn_x2, rn_x3,                                               &    
+              &             rn_x_ork, rn_y2, rn_d1, rn_d2, rn_d3, rn_s1, rn_s2, -zminphi,      &
+              &             ln_orkney, ln_fh,                                                  &
               &             rn_r0, rn_r1, ff_t, rn_H_mbump, ln_mbump, rn_d_mbump,   zH, z2d,   &
               &             shelf_frac )
 
@@ -226,92 +271,14 @@ CONTAINS
       IF(ln_bathy_noise) THEN
          !Add sinusoidal noise to the Weddell GYRE bathymetry
          
-         
-         !!IF(lwp) WRITE(numout,*) 'Adding sinusoidal noise to the bathymetry'
-         !np = SIZE(rn_bnoise_lx)
-         !znoise(:,:) = 0.
-
          CALL iom_open( trim(cn_noise_file), inum_noise)
          CALL iom_get( inum_noise, jpdom_autoglo_xy, cn_noise_varname, znoise, ldxios=lrxios)
          CALL iom_close( inum_noise )
 
          znoise = rn_noise_scale * znoise
 
-	 !DO ip = 1,np
-	 !   !
-         !   iphase = rn_bnoise_phase(ip)
-         !   iamp = rn_bnoise_amp(ip)!
-
-	 !   ilx = rn_bnoise_lx(ip)
-         !   ily = rn_bnoise_ly(ip)
-
-            
-
-            !Test for zero wavelength cases
-         !   IF( (ABS(ilx) > 0._wp).AND.(ABS(ily) > 0._wp) ) noise_case = 1
-         !   IF( (ABS(ilx) <= 0._wp).AND.(ABS(ily) <= 0._wp) ) noise_case = 2 
-         !   IF( (ABS(ilx) >  0._wp).AND.(ABS(ily) <= 0._wp) ) noise_case = 3
-         !   IF( (ABS(ilx) <= 0._wp).AND.(ABS(ily) >  0._wp) ) noise_case = 4  
-            
-         !   SELECT CASE(noise_case)
-         !   CASE(1) !Both wavelengths are non-zero
-         !      ilx = rn_domszx / NINT(rn_domszx/ilx)
-         !      ikx = 2*rpi/rn_bnoise_lx(ip)
-         !      iky = 2*rpi/rn_bnoise_ly(ip)
-
-         !      znoise(:,:) = znoise(:,:) + iamp * SIN( ikx * glamt + iky * gphit + iphase )
-
-         !      IF(lwp) WRITE(numout,*) 'Noisecase = ', noise_case
-         !      IF(lwp) WRITE(numout,*) 'Mode ',ip,'k = (', ikx, ',', iky, ')'
-         !      IF(lwp) WRITE(numout,*) 'Amp = ', iamp
-         !      IF(lwp) WRITE(numout,*) 'Phase = ', iphase
-         !      IF(lwp) WRITE(numout,*) ''                                    
-
-         !   CASE(2) ! Both wavelengths are zero
-         !      ikx = 0.
-         !      iky = 0.     
-
-         !  CASE(3) ! Only the x wavelength is non-zero
-         !      ilx = rn_domszx / NINT(rn_domszx/ilx)
-         !      ikx = 2*rpi/rn_bnoise_lx(ip)
-         !      iky = 0.
-
-         !      znoise(:,:) = znoise(:,:) + iamp * SIN( ikx * glamt + iphase )
-
-         !      IF(lwp) WRITE(numout,*) 'Noisecase = ', noise_case
-         !      IF(lwp) WRITE(numout,*) 'Mode ',ip,'k = (', ikx, ',', iky, ')'
-         !      IF(lwp) WRITE(numout,*) 'Amp = ', iamp
-         !      IF(lwp) WRITE(numout,*) 'Phase = ', iphase
-         !      IF(lwp) WRITE(numout,*) ''
-                      
-
-         !   CASE(4) ! Only the y wavelength is non-zero
-         !      ikx = 0.
-         !      iky = 2*rpi/rn_bnoise_ly(ip)
-
-         !      znoise(:,:) = znoise(:,:) + iamp * SIN( iky * gphit + iphase )
-
-         !      IF(lwp) WRITE(numout,*) 'Noisecase = ', noise_case
-         !      IF(lwp) WRITE(numout,*) 'Mode ',ip,'k = (', ikx, ',', iky, ')'
-         !      IF(lwp) WRITE(numout,*) 'Amp = ', iamp
-         !      IF(lwp) WRITE(numout,*) 'Phase = ', iphase
-         !      IF(lwp) WRITE(numout,*) ''
-                           
-         !   END SELECT
-            !
-            ! 
-         !END DO
-
-         !zH(:,:) = zH(:,:) + znoise(:,:)
-         !
-         !WHERE( zH < 0 )
-	 !   zH(:,:) = 0.
-         !END WHERE
-
-         !z2d = ( zH / rn_domszz ) * jpkm1
-
-         !
       END IF
+      !
       zmaxlam = MAXVAL(glamt)
       zminlam = MINVAL(glamt)
       CALL mpp_max( 'usrdef_zgr', zmaxlam )
@@ -321,15 +288,22 @@ CONTAINS
       IF(lwp) WRITE(numout,*) 'zminlam =', zminlam
       !
       !
-      WHERE( ((gphit <= 0.).AND.(glamt <= 0)).OR.((gphit >= rn_sponge_ly).AND.(glamt <= 0)) )
-      	 z2d(:,:) = 0.
-      END WHERE
       !
       IF(ln_bathy_noise) THEN
-         WHERE(( z2d > 1 ).AND.(z2d + znoise*jpkm1/rn_domszz > 1) )
-            z2d(:,:) = z2d(:,:) + znoise(:,:) * (jpkm1 / rn_domszz)
+         !
+         CALL H_to_ind(zH + znoise, z2d_tmp)
+         !
+         WHERE(( z2d > 1 ).AND.(z2d_tmp > 1))
+            zH(:,:) = zH(:,:) + znoise(:,:)
          END WHERE
+         !
+         CALL H_to_ind(zH, z2d)
+         !
       END IF
+
+      WHERE( ((gphit <= 0.).AND.(glamt <= 0)).OR.((gphit >= rn_sponge_ly).AND.(glamt <= 0)) )
+         z2d(:,:) = 0.
+      END WHERE
 
       CALL lbc_lnk( 'usrdef_zgr', z2d, 'T', 1. )           ! set surrounding land to zero (here jperio=0 ==>> closed)
       !
@@ -365,7 +339,7 @@ CONTAINS
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       !
       INTEGER(wp) :: ji, jj, jj_glo, ji_glo
-      REAL(wp), DIMENSION(jpi,jpj):: z2d
+      REAL(wp), DIMENSION(jpi,jpj):: z2d, zH, shelf_frac
       INTEGER, DIMENSION(jpi, jpj) :: k_top, k_bot
       REAL(wp) :: pe3t_p, pe3u_p, pe3v_p, pe3f_p, pe3w_p, pe3vw_p, pe3uw_p
       REAL(wp) ::   zmaxlam, zminlam, zscl, zminphi
@@ -388,13 +362,28 @@ CONTAINS
       END DO
       !
       !
+      zminphi = MINVAL(gphit)
+      CALL mpp_min('usrdef_zgr', zminphi)
+      
+      !Call analytic form of idealized bathymetry
+      CALL ideal_WG_bath(glamt, gphit, rn_h_flat, rn_h_ork,  rn_domszz, rn_hs,   &                       
+              &     rn_x1, rn_x2, rn_x3, &
+              &     rn_x_ork, rn_y2, rn_d1, rn_d2, rn_d3, rn_s1, rn_s2,          &
+              &     -zminphi, ln_orkney, ln_fh,  &
+              &     rn_r0, rn_r1, ff_t, rn_H_mbump, ln_mbump, rn_d_mbump,   zH,  &
+              &     z2d, shelf_frac )
+ 
+      !Call bottom mask, top mask, and z2d
+      CALL zgr_msk_top_bot( k_top , k_bot, z2d)
+      !
+      SELECT CASE( nn_zgr_type )
+      !
+      CASE(0,1)
+      !
       !Addition by Andrew Styles >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       !Adding a partial cell representation of the bathymetry
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       !
-      !Call bottom mask, top mask, and z2d
-      CALL zgr_msk_top_bot( k_top , k_bot, z2d)
-
       DO ji = 1,jpi
          DO jj = 1, jpj
             !
@@ -482,13 +471,97 @@ CONTAINS
             END IF
          END DO
       END DO
+
+      ! Work in Progress - Implementation of hybrid coordinates
+      !CASE(2)
+      !   !
+      !   DO ji = 1, jpi
+      !      DO jj= 1, jpj
+      !         !
+      !         !Scale all T cell thicknesses equally if an unmasked column
+      !         IF (k_bot(ji,jj) .NE. 0) THEN
+      !            pe3t(ji,jj,:) =  zH(ji,jj)/k_bot(ji,jj)
+      !         ELSE
+      !           pe3t(ji,jj,:)  =  0.
+      !         END IF
+      !         !
+      !         pdept(ji,jj,1) = e3t(1)/2
+      !         DO jk = 2, jpk
+      !            pdept(ji,jj,jk) = pdept(ji,jj,jk-1) + 0.5*(e3t(jk-1) + e3t(jk))
+      !         END DO 
+      !         !
+      !         DO jk = 1,jpk
+      !            IF (jk .ne. 1) THEN
+      !                !
+      !                pe3w(ji,jj,jk) = (pe3t(ji,jj,jk) + pe3t(ji,jj,jk-1))/2
+      !                !
+      !            ELSE
+      !                !
+      !                pe3w(ji,jj,jk) = pe3t(ji,jj,jk)
+      !                !
+      !            END IF
+      !         END DO
+      !
+      !         pdepw(ji,jj,1) = 0.
+      !         DO jk = 2, jpk
+      !            pdepw(ji,jj,jk) = pdepw(ji,jj,jk-1) + 0.5*(e3w(jk-1) + e3w(jk))
+      !         END DO
+      !
+      !         IF ( ji .ne. jpi ) THEN
+      !            !
+      !            pe3u(ji,jj,:) = (pe3t(ji,jj,:) + pe3t(ji+1,jj,:))/2
+      !            pe3uw(ji,jj,:) = (pe3w(ji,jj,:) + pe3w(ji+1,jj,:))/2
+      !            !
+      !         ELSE
+      !            !
+      !            pe3u(ji,jj,:) = pe3t(ji,jj,:)
+      !            pe3uw(ji,jj,:) = pe3w(ji,jj,:)
+      !            !
+      !         END IF
+      !         !
+      !         IF (jj .ne. jpj) THEN
+      !            !
+      !            pe3v(ji,jj,:) = (pe3t(ji,jj,:) + pe3t(ji,jj+1,:))/2
+      !            pe3vw(ji,jj,:) = (pe3w(ji,jj,:) + pe3w(ji,jj+1,:))/2
+      !            !
+      !         ELSE
+      !            !
+      !            pe3v(ji,jj,:) = pe3t(ji,jj,:)
+      !            pe3vw(ji,jj,:) = pe3w(ji,jj,:)
+      !            !
+      !         END IF
+      !         !
+      !         IF ((ji .ne. jpi).AND.(jj .ne. jpj)) THEN
+      !            !
+      !            pe3f(ji,jj,:) = (pe3t(ji,jj,:) + pe3t(ji+1,jj,:) &
+      !                          & + pe3t(ji,jj+1,:) + pe3t(ji+1,jj+1,:) )/4
+      !            !
+      !         ELSE IF ( (ji .ne. jpi).AND.(jj == jpj) ) THEN
+      !            !
+      !            pe3f(ji,jj,:) = (pe3t(ji,jj,:)+ pe3t(ji+1,jj,:))/2
+      !            !
+      !         ELSE IF ( (ji == jpi).AND.(jj .ne. jpj) ) THEN
+      !            !
+      !            pe3f(ji,jj,:) = (pe3t(ji,jj,:) + pe3t(ji,jj+1,:) )/2
+      !            !
+      !         ELSE
+      !            !
+      !            pe3f(ji,jj,:) = pe3t(ji,jj,:)
+      !            !
+      !         END IF
+      !         ! 
+      !      END DO
+      !   END DO 
+      END SELECT         
      
    END SUBROUTINE zgr_zco
 
    !!======================================================================
 
-   SUBROUTINE ideal_WG_bath(x_grid, y_grid, H_flat, H_ork, H_max, x1, x2, x3, x_ork, y2, &
-              &             d1, d2, d3, yacc, ln_orkney, ln_fh, r0, r1, ff_t, H_mbump,   &
+   SUBROUTINE ideal_WG_bath(x_grid, y_grid, H_flat, H_ork, H_max, H_s,                   &
+              &             x1, x2, x3, x_ork, y2,                                       & 
+              &             d1, d2, d3, s1, s2, yacc, ln_orkney, ln_fh, r0, r1,          & 
+              &             ff_t, H_mbump,                                               &
               &             ln_mbump, d_mbump, H, z2d, shelf_frac)
 
             implicit none
@@ -497,8 +570,9 @@ CONTAINS
             real, intent(in) :: y_grid(SIZE(x_grid,1),SIZE(x_grid,2))
 	         real, intent(in) :: ff_t(SIZE(x_grid,1),SIZE(x_grid,2))
             !
-            real, intent(in) :: H_flat, H_ork, H_max, H_mbump
+            real, intent(in) :: H_flat, H_ork, H_max, H_mbump, H_s
             real, intent(in) :: x1, x2, x3, x_ork, y2, d1, d2, d3, yacc, r0, r1, d_mbump
+            real, intent(in) :: s1, s2
             logical, intent(in) :: ln_orkney, ln_fh, ln_mbump
             !
             real, intent(out) :: H(SIZE(x_grid,1), SIZE(x_grid,2))
@@ -531,34 +605,52 @@ CONTAINS
 
             
             !Sinusoidal slope on Western boundary
-            WHERE( (x_grid < d1).AND.(y_grid2 > x1).AND.(y_grid2 <= yacc))
+            WHERE( (x_grid < d1).AND.(x_grid > s1).AND.(y_grid2 > x1).AND.(y_grid2 <= yacc))
                 !
-                H(:,:) = H_flat*SIN( 0.5*rpi*x_grid / d1 )**2
+                H(:,:) = (H_flat-H_s)*SIN( 0.5*rpi*(x_grid-s1) / (d1-s1) )**2 + H_s
                 !
             END WHERE
 
+            WHERE( (x_grid <= s1).AND.(y_grid2 > x1).AND.(y_grid2 <= yacc))
+            !
+            H(:,:) = H_s
+            !
+            END WHERE
+        
             !Circular curvature of basin on SW corner
             r = SQRT( (x_grid-x1)**2 + (y_grid2-x1)**2 )
-            WHERE( ((r < x1).AND.(r > (x1-d1) ).AND.(x_grid < x1).AND.(y_grid2 <=x1)) )
+            WHERE( ((r < x1-s1).AND.(r > (x1-d1) ).AND.(x_grid <= x1).AND.(y_grid2 <=x1)) )
                 !
-                H(:,:) = H_flat*SIN( 0.5*rpi*(x1 - r)/d1)**2
+                H(:,:) = (H_flat-H_s)*SIN( 0.5*rpi*(r - x1 + s1)/(d1-s1))**2 + H_s
                 !
             END WHERE
 
-            WHERE( ((r >= x1).AND.(x_grid < x1).AND.(y_grid2 <=x1)) )
-                !
-                H(:,:) = 0.
-                !
+            WHERE( ((r <= x1).AND.(r >= (x1-s1) ).AND.(x_grid <= x1).AND.(y_grid2 <=x1)) )
+            !
+            H(:,:) = H_s
+            !
+            END WHERE
+
+            WHERE( ((r > x1).AND.(x_grid < x1).AND.(y_grid2 <=x1)) )
+            !
+            H(:,:) = 0.
+            !
             END WHERE
             !
-	         !Transition from meridional shelf of thickness d1 to zonal shelf of thickness d2 >>>
+	    !Transition from meridional shelf of thickness d1 to zonal shelf of thickness d2 >>>
             !
             sinx = SIN(0.5*rpi*(x_grid - x1)/(x2 - x1))**2
 
-            WHERE( (x_grid < x2).AND.(x_grid >=x1).AND.(y_grid2 >= y2*sinx).AND.(y_grid2 <= (y2+d2-d1)*sinx + d1) )
-                !
-                H(:,:) = H_flat*SIN( 0.5*rpi*(y_grid2 - y2*sinx)/( (d2-d1)*sinx + d1 ) )**2
-                !
+            WHERE( (x_grid < x2).AND.(x_grid >=x1).AND.(y_grid2 >= (y2+s2-s1)*sinx + s1).AND.(y_grid2 <= (y2+d2-d1)*sinx + d1) )
+            !
+            H(:,:) = (H_flat-H_s)*SIN( 0.5*rpi*(y_grid2 - (y2+s2-s1)*sinx - s1)/( (d2-s2-d1+s1)*sinx + d1-s1 ) )**2 + H_s
+            !
+            END WHERE
+
+            WHERE( (x_grid < x2).AND.(x_grid >=x1).AND.(y_grid2 < (y2+s2-s1)*sinx + s1).AND.(y_grid2 >= y2*sinx) )
+            !
+            H(:,:) = H_s
+            !
             END WHERE
 
             WHERE( (x_grid < x2).AND.(x_grid >=x1).AND.(y_grid2 < y2*sinx))
@@ -566,14 +658,21 @@ CONTAINS
                 H(:,:) = 0.
                 !
             END WHERE
-
+            
             !Zonal shelf of thickness d2 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-            WHERE( (x_grid >= x2).AND.(y_grid2 >= y2).AND.(y_grid2 < (y2+d2)) )
+            WHERE( (x_grid >= x2).AND.(y_grid2 >= y2 + s2).AND.(y_grid2 < (y2+d2)) )
                 !
-                H(:,:) = H_flat*SIN( 0.5*rpi*(y_grid2-y2) / d2 )**2
+                H(:,:) = (H_flat-H_s)*SIN( 0.5*rpi*(y_grid2-y2-s2) / (d2-s2) )**2 + H_s
                 !
             END WHERE
+
+            WHERE( (x_grid >= x2).AND.(y_grid2 < y2 + s2).AND.(y_grid2 >=y2) )
+            !
+            H(:,:) = H_s
+            !
+            END WHERE
+
 
             WHERE( (x_grid >= x2).AND.(y_grid2 < y2) )
                 !
@@ -582,28 +681,33 @@ CONTAINS
             END WHERE
 
             !Circular curvature of basin on SE corner >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-            r = SQRT( (x_grid - (x_max-x3) )**2 + (y_grid2-(y2+x3))**2 )
-            
-            WHERE( ((r <= x3).AND.(r > (x3-d2) ).AND.(x_grid >= (x_max - x3) ).AND.(y_grid2 <= y2+ x3)) )
+            r = SQRT( (x_grid - (x_max-x3)) **2 + (y_grid2-(y2+s2+x3))**2 )
+            WHERE( ((r <= x3).AND.(r > x3+s2-d2 ).AND.(x_grid >= (x_max - x3) ).AND.(y_grid2 <= y2+ x3 + s2)) )
                 !
-                H(:,:) = H_flat*SIN( 0.5*rpi*(x3 - r)/d2)**2
-                !S
+                H(:,:) = (H_flat-H_s)*SIN( 0.5*rpi*(r-x3)/(d2-s2) ) **2 + H_s
+                !
             END WHERE
 
-            WHERE( ((r > x3).AND.(x_grid > (x_max - x3) ).AND.(y_grid2 <= y2 + x3)) )
+            WHERE( ((r > x3).AND.(r < x3 + s2).AND.(x_grid > (x_max - x3) ).AND.(y_grid2 <= y2 + x3 + s2)) )
+            !
+            H(:,:) = H_s
+            !
+            END WHERE
+
+            WHERE( ((r >= x3+s2).AND.(x_grid > (x_max - x3) ).AND.(y_grid2 <= y2 + x3 + s2)) )
             !
             H(:,:) = 0.
             !
             END WHERE
 
-            shelf_frac = ABS(H(:,:)/H_flat) !Fractional depth over basin shelves only
-
             !Sinusoidal slope on Eastern boundary >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-            WHERE( (x_grid > x_max - d2).AND.(y_grid2 > y2 + x3).AND.(y_grid2 <= yacc))
+            WHERE( (x_grid > x_max - d2 + s2).AND.(x_grid <= x_max).AND.(y_grid2 > y2 + x3 + s2).AND.(y_grid2 <= yacc))
                 !
-                H(:,:) = H_flat*SIN( 0.5*rpi*(x_max-x_grid) / d2 )**2
+                H(:,:) = (H_flat-H_s)*SIN( 0.5*rpi*(x_grid - x_max) / (d2-s2) )**2 + H_s
                 !
             END WHERE
+            
+            shelf_frac = ABS(H(:,:)/H_flat) !Fractional depth over basin shelves only
 
             !Optional f/H perturbation >>>>>>>>>>>>>>>>>>>>>>>>>>>>
             IF ( ln_fh ) THEN
@@ -635,23 +739,35 @@ CONTAINS
             !Optional introduction of an Orkney passage >>>>>>>>>>>
             IF( ln_orkney) THEN
 
-                WHERE( (x_grid < d1).AND.(y_grid2 > yacc - d3).AND.(y_grid2 <= yacc)  )
+                WHERE( (x_grid < d1).AND.(x_grid > s1).AND.(y_grid2 > yacc - d3).AND.(y_grid2 <= yacc)  )
                 !
-                H(:,:) = H_flat * (SIN(0.5*rpi*x_grid/d1)**2)*(SIN(0.5*rpi*(y_grid2-yacc)/d3)**2) &
-                      &  + H_ork * (SIN(0.5*rpi*x_grid/d1)**2)*(COS(0.5*rpi*(y_grid2-yacc)/d3)**2)
+                H(:,:) = ( (H_flat-H_s) * (SIN(0.5*rpi*(x_grid-s1)/(d1-s1))**2)  + H_s )*(SIN(0.5*rpi*(y_grid2-yacc)/d3)**2) &
+                      &  +( H_ork * (SIN(0.5*rpi*(x_grid-s1)/(d1-s1))**2) )*(COS(0.5*rpi*(y_grid2-yacc)/d3)**2)
+                !
+                END WHERE
+
+                WHERE( (x_grid <= s1).AND.(y_grid2 > yacc - d3).AND.(y_grid2 <= yacc)  )
+                !
+                H(:,:) = H_s
                 !
                 END WHERE
                 
-                WHERE( (x_grid < d1).AND.(x_grid > 0).AND.(y_grid2 > yacc).AND.(y_grid2 <= yacc+d3)  )
+                WHERE( (x_grid < d1).AND.(x_grid > s1).AND.(y_grid2 > yacc).AND.(y_grid2 <= yacc+d3)  )
                 !
-                H(:,:) = H_flat * (SIN(0.5*rpi*(y_grid2-yacc)/d3)**2) &
+                H(:,:) = (H_flat-H_s) * (SIN(0.5*rpi*(y_grid2-yacc)/d3)**2) &
                       &  + H_ork * (SIN(0.5*rpi*x_grid/d1)**2)*(COS(0.5*rpi*(y_grid2-yacc)/d3)**2)
                 !
                 END WHERE
 
+                WHERE( (x_grid <= s1).AND.(y_grid2 > yacc).AND.(y_grid2 <= yacc+d3)  )
+                !
+                H(:,:) = (H_flat - H_s) * (SIN(0.5*rpi*(y_grid2-yacc)/d3)**2) + H_s 
+                !
+                END WHERE
+                
                 WHERE( (x_grid <= 0).AND.(y_grid2 >= yacc).AND.(y_grid2 <= yacc+d3)  )
                 !
-                H(:,:) = H_flat * (SIN(0.5*rpi*(y_grid2-yacc)/d3)**2)
+                H(:,:) = (H_flat-H_s) * (SIN(0.5*rpi*(y_grid2-yacc)/d3)**2) + H_s
                 !
                 END WHERE
                 
@@ -669,18 +785,8 @@ CONTAINS
                     H(:,:) = H_flat *(SIN(0.5*rpi*r/d3)**2) &
                         &  + H_ork *(COS(0.5*rpi*r/d3)**2)
                 !
-                END WHERE
-
-                IF(ln_orkney_pass) THEN
-                   !
-                   WHERE( (x_grid > rn_x_pass - rn_d_pass/2).AND.(x_grid < rn_x_pass + rn_d_pass/2).AND.(y_grid2 >= yacc - d3).AND.(y_grid2 <= yacc + d3) )
-                      !
-                      H(:,:) = ( H(:,:)-rn_H_pass ) * ( SIN( rpi * (x_grid - rn_x_pass) / rn_d_pass) * SIN(0.5 * rpi * (y_grid2 -yacc)/d3) )**2 + rn_H_pass
-                      !
-                   END WHERE
-                   !
-                END IF
-
+                END WHERE 
+                ! 
             ELSE
 
                !If an Orkney ridge isn't used, use an elliptical transition to the channel shelf of thickness d3
@@ -738,16 +844,15 @@ CONTAINS
            END IF
 
             !Elliptical curvature of basin on NE corner >>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-            r = SQRT( ((x_grid-x_max)/d2)**2 + ((y_grid2 - yacc)/d3)**2 )
+            r = SQRT( ((x_grid-x_max)/(d2-s2))**2 + ((y_grid2 - yacc)/d3)**2 )
                 !
             WHERE( (r < 1).AND.(x_grid <=x_max).AND.(y_grid2 >= yacc).AND.(y_grid2 <= yacc + d3))
             !    !
                 H(:,:) = H_flat*(SIN( 0.5*rpi*r)**2)
             !    !
-            END WHERE
+            END WHERE 
 
-	         z2d = ( H/H_max )*jpkm1            
-
+            CALL H_to_ind(H,z2d) 
 
       END SUBROUTINE ideal_WG_bath   
 
@@ -963,6 +1068,101 @@ CONTAINS
       END IF
 
    END SUBROUTINE sponge_setup
+
+   SUBROUTINE H_to_ind(zH, z2d)
+      !
+      REAL(wp), INTENT(in), DIMENSION(jpi,jpj) :: zH
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: z2d
+      REAL(wp), DIMENSION(jpk) :: pdept_1d, pdepw_1d, pe3t_1d, pe3w_1d
+      REAL(wp) :: zH_point
+      INTEGER :: ind_min, ik1, ik2, ji, jj
+      !
+      z2d(:,:) = 0._wp
+      !
+      SELECT CASE(nn_zgr_type)
+      !
+      CASE(0) ! Regular z grid
+         z2d(:,:) = zH(:,:) * jpkm1 / rn_domszz
+      !
+      CASE(1) ! Madec and Imbard z grid
+         !
+         CALL zgr_z( pdept_1d, pdepw_1d, pe3t_1d , pe3w_1d )                  
+         !
+         DO ji = 1, jpi
+            DO jj =1, jpj
+               !
+               zH_point = zH(ji,jj)
+               ind_min = MINLOC(ABS(pdept_1d - zH_point), DIM=1)
+               !
+               IF( zH_point - pdept_1d(ind_min) > 0) THEN
+                  !
+                  IF( ind_min .NE. jpk) THEN
+                     ik1 = ind_min
+                     ik2 = ind_min + 1 
+                  ELSE
+                     ik1 = ind_min - 1
+                     ik2 = ind_min
+                  END IF
+                  !
+                  z2d(ji,jj) = ik1 + ( zH_point - pdept_1d(ik1) )/( pdept_1d(ik2) - pdept_1d(ik1) )
+                  !
+               ELSE IF( zH_point - pdept_1d(ind_min) < 0 ) THEN
+                  !
+                  IF( ind_min .NE. 1 ) THEN
+                    ik1 = ind_min - 1
+                    ik2 = ind_min
+                  ELSE
+                    ik1 = ind_min
+                    ik2 = ind_min + 1
+                  END IF 
+                  !
+                  z2d(ji,jj) = ik1 + ( zH_point - pdept_1d(ik1) )/( pdept_1d(ik2) - pdept_1d(ik1) )
+                  !
+               ELSE !zH_point lies exactly on an existing coordinate in pdept_1d
+                  !
+                  z2d(ji,jj) = ind_min
+                  !
+               END IF           
+               !
+            END DO
+         END DO      
+         !
+         WHERE( z2d > jpkm1 )
+            z2d = jpkm1
+         END WHERE     
+         !
+         WHERE(z2d < 0 )
+            z2d = 0._wp
+         END WHERE              
+         !
+      !Work in progress - Hybrid (terrain following) coordinates
+      !CASE(2) ! Terrain (sigma) following coordinate
+      !   !
+      !   DO ji = 1, jpi
+      !      DO jj = 1, jpj
+      !         !
+      !         zH_point = zH(ji,jj)
+      !         !
+      !         z2d(ji,jj) = jpkm1
+      !         !
+      !         IF( zH_point < 20. ) THEN
+      !            z2d(ji,jj) = 0.
+      !         ELSE
+      !            DO WHILE( zH_point / z2d(ji,jj) < 20.)
+      !               z2d(ji,jj) = z2d(ji,jj) - 1
+      !            END DO
+      !         END IF
+      !      END DO
+      !   END DO
+      !    !
+      !   WHERE(z2d < 0 )
+      !      z2d = 0._wp
+      !   END WHERE
+
+         
+      END SELECT      
+      !
+   END SUBROUTINE H_to_ind   
 
 
 END MODULE usrdef_zgr

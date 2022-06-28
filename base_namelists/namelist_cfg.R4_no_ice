@@ -25,6 +25,9 @@
    rn_dx       =    25.   !  x horizontal resolution   [km]
    rn_dy       =    25.   !  y horizontal resolution   [km]
    rn_dz       =    125.   !  z vertical resolution      [m]
+   nn_zgr_type =       1   !  Type of vertical coordinate == 0 regular grid (e3t = rn_dz)
+                           !                              == 1 MI96 function (mean e3t = rn_dz)
+                           !                              (jpk = domszz/rn_dz + 1)
    rn_0yratio  =    0.45   !  y-domain ratio of the 0
    nn_fcase    =      1    !  F computation (0:f0, 1:Beta, 2:real)
    rn_ppgphi0  =    -65.   !  Reference latitude      [degrees]

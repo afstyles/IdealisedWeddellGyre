@@ -91,6 +91,19 @@ echo "nc4_tchunk=1"            >> nam_rebuild_grid_W
 echo "fchunksize=32000000"     >> nam_rebuild_grid_W
 echo "/"                       >> nam_rebuild_grid_W
 
+echo "&nam_rebuild"             > nam_rebuild_grid_transport
+echo "filebase='${MODEL}_grid_transport'" >> nam_rebuild_grid_transport
+echo "ndomain=${NUM_DOM}"      >> nam_rebuild_grid_transport
+echo "l_maskout=.false "       >> nam_rebuild_grid_transport
+echo "nslicesize=0"            >> nam_rebuild_grid_transport
+echo "deflate_level=1"         >> nam_rebuild_grid_transport
+echo "nc4_xchunk=50"           >> nam_rebuild_grid_transport
+echo "nc4_ychunk=50"           >> nam_rebuild_grid_transport
+echo "nc4_zchunk=1"            >> nam_rebuild_grid_transport
+echo "nc4_tchunk=1"            >> nam_rebuild_grid_transport
+echo "fchunksize=32000000"     >> nam_rebuild_grid_transport
+echo "/"                       >> nam_rebuild_grid_transport
+
 echo "&nam_rebuild"             > nam_rebuild_restart
 echo "filebase='${MODEL}_${RES_TIMESTAMP}_restart'" >> nam_rebuild_restart
 echo "ndomain=${NUM_CPU}"      >> nam_rebuild_restart
@@ -164,6 +177,13 @@ fi
 if $BASE_DIR/tools/REBUILD_NEMO/rebuild_nemo nam_rebuild_grid_W ; then
     echo "Success grid_W files - removing separated files"
     rm -v ${MODEL}_grid_W_????.nc
+else
+    echo "Failure grid_W files - keeping separated files"
+fi
+
+if $BASE_DIR/tools/REBUILD_NEMO/rebuild_nemo nam_rebuild_grid_transport ; then
+    echo "Success grid_W files - removing separated files"
+    rm -v ${MODEL}_grid_transport_????.nc
 else
     echo "Failure grid_W files - keeping separated files"
 fi

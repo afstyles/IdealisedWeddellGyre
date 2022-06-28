@@ -15,15 +15,7 @@
 	  <field field_ref="soce" /> 
 	  <field field_ref="ssh"  />
           <field field_ref="qns"  />
-	  <field field_ref="salgrad"  />
-	  <field field_ref="ke_zint"  />
-	  <field field_ref="relvor"  />
-	  <field field_ref="potvor"  />
-	  <field field_ref="saltc"  />
-	  <field field_ref="salt2c"  />
           <field field_ref="rhop"         name="swsigthet" />
-          <field field_ref="target_to"  />
-          <field field_ref="sponge_gamma_t"  /> 
           <field field_ref="saltflx"  />
           <field field_ref="botpres"  />
           <field field_ref="empmr"  />
@@ -31,7 +23,6 @@
 	</file>
 
 	<file id="file3" name_suffix="_grid_U" description="ocean U grid variables" output_freq="10y" >
-	  <field field_ref="utau"  />
 	  <field field_ref="uoce" />
           <field field_ref="utrd_rvo"      name="utrd_swrvo" />
           <field field_ref="utrd_keg"      name="utrd_swkeg" />
@@ -46,14 +37,12 @@
           <field field_ref="utrd_bfr"      name="utrd_swbfr" />
           <field field_ref="utrd_spg"      name="utrd_swspg" />
           <field field_ref="utrd_tau"      name="utrd_swtau" />
-          <field field_ref="target_uo"  />
-          <field field_ref="sponge_gamma_u"  />  
+          <field field_ref="utau"  />
 	</file>
 	
 	<file id="file4" name_suffix="_grid_V" description="ocean V grid variables" output_freq="10y" >
-	  <field field_ref="vtau"  />
 	  <field field_ref="voce" />
-	  <field field_ref="vtrd_rvo"      name="vtrd_swrvo" />
+          <field field_ref="vtrd_rvo"      name="vtrd_swrvo" />
           <field field_ref="vtrd_keg"      name="vtrd_swkeg" />
           <field field_ref="vtrd_pvo"      name="vtrd_swpvo" />
           <field field_ref="vtrd_pvo_corr" name="vtrd_swpvo_corr" />
@@ -66,8 +55,7 @@
           <field field_ref="vtrd_bfr"      name="vtrd_swbfr" />
           <field field_ref="vtrd_spg"      name="vtrd_swspg" />
           <field field_ref="vtrd_tau"      name="vtrd_swtau" />
-          <field field_ref="target_vo"  />
-          <field field_ref="sponge_gamma_v"  />
+          <field field_ref="vtau"  />
 	</file>
 	
 	<file id="file5" name_suffix="_grid_W" description="ocean W grid variables" output_freq="10y" >
@@ -82,6 +70,11 @@
           <field field_ref="acc_transport" />
           <field field_ref="mean_temperature" />
           <field field_ref="mean_salinity" />
+      </file>
+
+      <file id="file7" name_suffix="_grid_transport" description="ocean U grid variables" output_freq="1y" >
+          <field field_ref="uoce" />
+          <field field_ref="voce" />
       </file>
 
       </file_group>

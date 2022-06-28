@@ -346,7 +346,7 @@
          <field id="e3u_0"        long_name="Initial U-cell thickness"                               standard_name="ref_cell_thickness"          unit="m"          grid_ref="grid_U_3D"/>
          <field id="utau"         long_name="Wind Stress along i-axis"                               standard_name="surface_downward_x_stress"   unit="N/m2"                            />
          <field id="uoce"         long_name="ocean current along i-axis"                             standard_name="sea_water_x_velocity"        unit="m/s"        grid_ref="grid_U_3D" />
-         <field id="uoce_e3u"     long_name="ocean current along i-axis  (thickness weighted)"                                                   unit="m/s"        grid_ref="grid_U_3D"  > uoce * e3u </field>
+         <field id="uoce_e3u"     long_name="ocean current along i-axis  (thickness weighted)"                                                   unit="m2/s"        grid_ref="grid_U_3D"  > uoce * e3u </field>
          <field id="ssu"          long_name="ocean surface current along i-axis"                                                                 unit="m/s"                             />
          <field id="sbu"          long_name="ocean bottom current along i-axis"                                                                  unit="m/s"                             />
          <field id="ubar"         long_name="ocean barotropic current along i-axis"                                                              unit="m/s"                             />

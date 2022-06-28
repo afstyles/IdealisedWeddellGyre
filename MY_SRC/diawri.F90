@@ -190,6 +190,8 @@ CONTAINS
          
       CALL iom_put( "uoce", un(:,:,:) )            ! 3D i-current
       CALL iom_put(  "ssu", un(:,:,1) )            ! surface i-current
+      ! 
+
       IF ( iom_use("sbu") ) THEN
          DO jj = 1, jpj
             DO ji = 1, jpi

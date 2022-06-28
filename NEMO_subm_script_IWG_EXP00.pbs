@@ -1,0 +1,112 @@
+#!/bin/bash
+#!
+#PBS -q normal
+#PBS -A astyles
+#PBS -l select=2
+#PBS -l walltime=4:00:00
+#PBS -N IWG_80km_CTLI
+#PBS -o iwg.80km_CTLI.output
+#PBS -e iwg.80km_CTLI.error
+#PBS -j oe
+#PBS -V
+#PBS -P jmmp
+
+## Load necessary modules just in case they are not loaded already >>>
+module swap PrgEnv-cray/5.2.82 PrgEnv-intel/5.2.82
+module swap intel/15.0.0.090 intel/18.0.5.274
+module load cray-hdf5-parallel/1.10.2.0
+module load cray-netcdf-hdf5parallel/4.6.1.3
+
+#INPUT VARIABLES FOR ALL STAGES (RUNNING + POSTPROCESS)
+export BASE_DIR=/projects/jmmp/astyles/NEMO/release-4.0.1/
+export OCEANCORES=30                                            #Number of cores to run ocean model
+export XIOSCORES=1                                               #Number of cores to run XIOS server (=NUM_DOM)
+export RN=80km                                                     #Resolution code
+export CONFIG_NAME=IDEALIZED_WG                                  #Name of configuration
+export SUBMDIR=/projects/jmmp/astyles/CANAL_TESTING/             #Submission script directory
+export SUBMSCRIPT=NEMO_subm_script_IWG_EXP00.pbs                     #Submission script file name
+export EXPNN=EXP00                                               #Experiment name
+
+#Postprocessing variables
+export label=${CONFIG_NAME}_${RN}_${EXPNN}_ShortChannel           #Label for output files 
+export OUTSAVE=$SUBMDIR/$label                                    #Save folder for output files
+export MODEL=CANAL                                                #Model name for file identification
+export Nresub_spup=10                                             #Total number of resubmissions for spinup
+export Nresub_exp=3                                               #Total number of resubmission for experimental 
+window
+export SPINUP_INT=43200                                          #Number of time steps in a spinup submission
+export EXP_INT=43200                                             #Number of time steps in final resubmission 
+                                                                  #(post spinup)
+export SPINUP_OUT_FREQ="10y"                                       #Output frequency of data during spinup
+export EXP_OUT_FREQ="1mo"                                         #Output frequence of data during experiment
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+#Make sure your namelist is correct:
+#nn_it000 = 1
+#nn_itend = spinup interval
+#nn_stock = spinup interval
+
+#ln_rstart=.false.
+#cn_ocersr_in="restart_tmp"
+#ln_meshmask=.true.
+
+#Also make sure file_def_nemo-oce.xml is set with spinup_out_freq
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+#Move to submission directory
+cd $SUBMDIR
+
+#If the output folder doesn't exist, make the folder
+if [ ! -d $OUTSAVE ]; then
+   mkdir -v $OUTSAVE
+   mkdir -v $OUTSAVE/SPINUP
+   mkdir -v $OUTSAVE/EXP
+fi
+
+#Copy the submission script to the output folder
+cp -v $SUBMSCRIPT $OUTSAVE
+
+#Move to experiment directory
+cd $BASE_DIR/tests/${CONFIG_NAME}/$EXPNN/
+
+echo " _ __   ___ _ __ ___   ___         "
+echo "| '_ \ / _ \ '_ ' _ \ / _ \        "
+echo "| | | |  __/ | | | | | (_) |       "
+echo "|_| |_|\___|_| |_| |_|\___/  v4.0  "
+
+ulimit -c unlimited
+ulimit -s unlimited
+
+if [ $XIOSCORES -gt 30 ]
+then
+   aprun -b -n $XIOSCORES -N 30 ./xios_server.exe : -n $OCEANCORES -N 30 ./nemo
+else
+   aprun -b -n $XIOSCORES -N $XIOSCORES ./xios_server.exe : -n $OCEANCORES -N 30 ./nemo
+fi
+
+#===============================================================
+# POSTPROCESSING
+#===============================================================
+
+# kills the daisy chain if there are errors
+
+if grep -q 'E R R O R' ocean.output ; then
+
+  echo "E R R O R found, exiting..."
+  echo "  ___ _ __ _ __ ___  _ __  "
+  echo " / _ \ '__| '__/ _ \| '__| "
+  echo "|  __/ |  | | | (_) | |    "
+  echo " \___|_|  |_|  \___/|_|    "
+  echo "check out ocean.output or stdouterr to see what the deal is "
+
+  exit
+else
+  echo "going into postprocessing stage..."
+  # cleans up files, makes restarts, moves files, resubmits this pbs
+
+  bash ./postprocess.sh >& cleanup.log
+
+  cp cleanup.log $OUTSAVE
+  exit
+fi
+
