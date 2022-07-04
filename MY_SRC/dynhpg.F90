@@ -96,7 +96,7 @@ CONTAINS
       !REAL(wp), DIMENSION(jpi,jpj) ::   sponge_gamma_u, sponge_gamma_v
       !REAL(wp), DIMENSION(jpi,jpj,jpk) :: target_uo, target_vo
       INTEGER ::   ios, jk, jj, ji             ! Local integer output status for namelist read
-      REAL(wp) :: zacc  !Calculation of ACC transport from now velocities
+      !!!!!! REAL(wp) :: zacc  !Calculation of ACC transport from now velocities
       REAL(wp), ALLOCATABLE, DIMENSION(:,:,:) :: zun_weighted !Temporary array for weighted now velocities
       !!----------------------------------------------------------------------
       !
@@ -150,6 +150,7 @@ CONTAINS
          END DO
          zacc = glob_sum('dynhpg', zun_weighted )/(1000 * rn_domszx)
          CALL iom_put( "acc_transport", zacc )
+         DEALLOCATE( zun_weighted )
       END IF
       !
       IF( l_trddyn ) THEN      ! save the hydrostatic pressure gradient trends for momentum trend diagnostics

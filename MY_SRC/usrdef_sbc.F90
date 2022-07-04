@@ -76,7 +76,8 @@ CONTAINS
          !
          utau(:,:) = 0.
          IF(lwp) WRITE(numout,*)' utau(:,:) = 0.'
-         
+         !
+         zrhocd = zrhoair * zcd
          zminphi = MINVAL(gphit)
          CALL mpp_min( 'usrdef_sbc', zminphi )
          !
@@ -153,7 +154,7 @@ CONTAINS
            END WHERE
 
            !Sum all the salt release due to ice freezing
-           freeze_integral = glob_sum( 'closea', sfx_freeze * tmask(:,:,1) )
+           freeze_integral = glob_sum( 'usrdef_sbc', sfx_freeze * tmask(:,:,1) )
            IF(lwp) WRITE(numout,*) "freeze_integral = ", freeze_integral        
 
            !Define the normalised form for the melting zone in the domain

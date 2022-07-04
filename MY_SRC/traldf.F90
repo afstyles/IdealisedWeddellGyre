@@ -136,6 +136,8 @@ CONTAINS
             CALL iom_put( "mean_salinity", ztn ) 
          END IF
 
+         DEALLOCATE( ztn_weighted )
+
       END IF
 
       IF( l_trdtra )   THEN                    !* save the horizontal diffusive trends for further diagnostics

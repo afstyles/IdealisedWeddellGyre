@@ -167,7 +167,7 @@ CONTAINS
       !
       SELECT CASE(nn_zgr_type)
       
-      CASE(0,2) ! Regular z grid
+      CASE(0) ! Regular z grid
          IF(lwp) WRITE(numout,*)'        CANAL case : uniform vertical grid :'
          IF(lwp) WRITE(numout,*)'                     with thickness = ', zd
          pdepw_1d(1) = 0._wp
@@ -931,17 +931,17 @@ CONTAINS
          !
       END IF
 
-      gamma_maxval = MAXVAL(ABS(sponge_gamma_u))
-      CALL mpp_max('usrdef_zgr', gamma_maxval)
-      IF(lwp) WRITE(numout,*) "u gamma maxval", gamma_maxval
+      !gamma_maxval = MAXVAL(ABS(sponge_gamma_u))
+      !CALL mpp_max('usrdef_zgr', gamma_maxval)
+      !IF(lwp) WRITE(numout,*) "u gamma maxval", gamma_maxval
 
-      gamma_maxval = MAXVAL(ABS(sponge_gamma_v))
-      CALL mpp_max('usrdef_zgr', gamma_maxval)
-      IF(lwp) WRITE(numout,*) "u gamma maxval", gamma_maxval 
+      !gamma_maxval = MAXVAL(ABS(sponge_gamma_v))
+      !CALL mpp_max('usrdef_zgr', gamma_maxval)
+      !IF(lwp) WRITE(numout,*) "u gamma maxval", gamma_maxval 
 
-      gamma_maxval = MAXVAL(ABS(sponge_gamma_t))
-      CALL mpp_max('usrdef_zgr', gamma_maxval)
-      IF(lwp) WRITE(numout,*) "t gamma maxval", gamma_maxval 
+      !gamma_maxval = MAXVAL(ABS(sponge_gamma_t))
+      !CALL mpp_max('usrdef_zgr', gamma_maxval)
+      !IF(lwp) WRITE(numout,*) "t gamma maxval", gamma_maxval 
 
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       ! Determine target/initial temperature and velocity fields
