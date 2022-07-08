@@ -139,12 +139,12 @@ else
     echo "Failure restart files - keeping separated files"
 fi
 
-if $BASE_DIR/tools/REBUILD_NEMO/rebuild_nemo nam_rebuild_mesh_mask ; then
-    echo "Success mesh_mask files - removing separated files"
-    rm -v mesh_mask_????.nc
-else
-    echo "Failure mesh_mask files - keeping separated files"
-fi
+#if $BASE_DIR/tools/REBUILD_NEMO/rebuild_nemo nam_rebuild_mesh_mask ; then
+#    echo "Success mesh_mask files - removing separated files"
+#    rm -v mesh_mask_????.nc
+#else
+#    echo "Failure mesh_mask files - keeping separated files"
+#fi
 
 #if $BASE_DIR/tools/REBUILD_NEMO/rebuild_nemo mesh_mask $NUM_CPU ; then
 #    echo "Success mesh_mask files - removing separated files"
@@ -204,10 +204,6 @@ n=$(< resub_count)
 export TIME=$(echo $(date +date_%d-%m-%y_time_%H-%M-%S))
 export OUTDIR=OUTPUTS/${MODEL}_${TIME}_${label}_${n}
 mkdir $OUTDIR
-
-
-#Copy restart file to RESTARTS folder
-cp -pv ${MODEL}_${RES_TIMESTAMP}_restart.nc ./RESTARTS/${MODEL}_${RES_TIMESTAMP}_restart.nc
 
 #Also make temporary restart file for resuming model if needed
 cp -pv ${MODEL}_${RES_TIMESTAMP}_restart.nc ./RESTARTS/restart_tmp.nc
