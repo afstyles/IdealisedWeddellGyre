@@ -153,40 +153,40 @@ fi
 #    echo "Failure mesh_mask files - keeping separated files"
 #fi
 
-if $BASE_DIR/tools/REBUILD_NEMO/rebuild_nemo nam_rebuild_grid_T ; then
-    echo "Success grid_T files - removing separated files"
-    rm -v ${MODEL}_grid_T_????.nc 
-else
-    echo "Failure grid_T files - keeping separated files"
-fi
+#if $BASE_DIR/tools/REBUILD_NEMO/rebuild_nemo nam_rebuild_grid_T ; then
+#    echo "Success grid_T files - removing separated files"
+#    rm -v ${MODEL}_grid_T_????.nc 
+#else
+#    echo "Failure grid_T files - keeping separated files"
+#fi
 
-if $BASE_DIR/tools/REBUILD_NEMO/rebuild_nemo nam_rebuild_grid_U ; then
-    echo "Success grid_U files - removing separated files"
-    rm -v ${MODEL}_grid_U_????.nc
-else
-    echo "Failure grid_U files - keeping separated files"
-fi
+#if $BASE_DIR/tools/REBUILD_NEMO/rebuild_nemo nam_rebuild_grid_U ; then
+#    echo "Success grid_U files - removing separated files"
+#    rm -v ${MODEL}_grid_U_????.nc
+#else
+#    echo "Failure grid_U files - keeping separated files"
+#fi
 
-if $BASE_DIR/tools/REBUILD_NEMO/rebuild_nemo nam_rebuild_grid_V ; then
-    echo "Success grid_V files - removing separated files"
-    rm -v ${MODEL}_grid_V_????.nc
-else
-    echo "Failure grid_V files - keeping separated files"
-fi
+#if $BASE_DIR/tools/REBUILD_NEMO/rebuild_nemo nam_rebuild_grid_V ; then
+#    echo "Success grid_V files - removing separated files"
+#    rm -v ${MODEL}_grid_V_????.nc
+#else
+#    echo "Failure grid_V files - keeping separated files"
+#fi
 
-if $BASE_DIR/tools/REBUILD_NEMO/rebuild_nemo nam_rebuild_grid_W ; then
-    echo "Success grid_W files - removing separated files"
-    rm -v ${MODEL}_grid_W_????.nc
-else
-    echo "Failure grid_W files - keeping separated files"
-fi
+#if $BASE_DIR/tools/REBUILD_NEMO/rebuild_nemo nam_rebuild_grid_W ; then
+#    echo "Success grid_W files - removing separated files"
+#    rm -v ${MODEL}_grid_W_????.nc
+#else
+#    echo "Failure grid_W files - keeping separated files"
+#fi
 
-if $BASE_DIR/tools/REBUILD_NEMO/rebuild_nemo nam_rebuild_grid_transport ; then
-    echo "Success grid_W files - removing separated files"
-    rm -v ${MODEL}_grid_transport_????.nc
-else
-    echo "Failure grid_W files - keeping separated files"
-fi
+#if $BASE_DIR/tools/REBUILD_NEMO/rebuild_nemo nam_rebuild_grid_transport ; then
+#    echo "Success grid_W files - removing separated files"
+#    rm -v ${MODEL}_grid_transport_????.nc
+#else
+#    echo "Failure grid_W files - keeping separated files"
+#fi
 
 # Export freq/start/end numbers fro grid output files (use T_0000.nc)
 #export OUT_FREQ=$(echo $(ls -d ${MODEL}_*_grid_T_0000.nc) | awk -F _ '{print $2 }')
