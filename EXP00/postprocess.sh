@@ -228,6 +228,7 @@ cp -pv ./nam_rebuild_grid_U  ./${OUTDIR}/nam_rebuild_grid_U.${RES_TIMESTAMP}
 cp -pv ./nam_rebuild_grid_V  ./${OUTDIR}/nam_rebuild_grid_V.${RES_TIMESTAMP}
 cp -pv ./nam_rebuild_grid_W  ./${OUTDIR}/nam_rebuild_grid_W.${RES_TIMESTAMP}
 cp -pv ./nam_rebuild_restart ./${OUTDIR}/nam_rebuild_restart.${RES_TIMESTAMP}
+cp -pv ./nam_rebuild_mesh_mask ./${OUTDIR}/nam_rebuild_mesh_mask.${RES_TIMESTAMP}
 cp -pv ./file_def_nemo-oce.xml ./${OUTDIR}/file_def_nemo-oce.xml.${RES_TIMESTAMP}
 cp -pv ./field_def_nemo-oce.xml ./${OUTDIR}/field_def_nemo-oce.xml.${RES_TIMESTAMP}
 
